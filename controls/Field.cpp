@@ -76,6 +76,10 @@ void CMenuField::_Event( int ev )
 		VidInit();
 		break;
 	case QM_GOTFOCUS:
+		// the gamepad UI passes over a field on its way down a page: text input, and with it the platform's
+		// own keyboard (Steam's, Android's), comes up only when A is pressed on it
+		if( uiStatic.gamepadUI )
+			break;
 		EngFuncs::SetTextInputRect( m_scPos.x, m_scPos.y, m_scSize.w, m_scSize.h );
 		UI_EnableTextInput( true );
 		break;
@@ -141,6 +145,18 @@ CMenuField::Key
 bool CMenuField::KeyDown( int key )
 {
 	bool handled = false;
+
+	// gamepad UI: A opens the field for typing and closes it again
+	if( uiStatic.gamepadUI && UI::Key::IsEnter( key ))
+	{
+		const bool open = !uiStatic.textInput;
+
+		if( open )
+			EngFuncs::SetTextInputRect( m_scPos.x, m_scPos.y, m_scSize.w, m_scSize.h );
+		UI_EnableTextInput( open );
+		PlayLocalSound( uiStatic.sounds[SND_KEY] );
+		return true;
+	}
 
 	// clipboard paste
 	if( UI::Key::IsInsert( key ) && EngFuncs::KEY_IsDown( K_SHIFT ))

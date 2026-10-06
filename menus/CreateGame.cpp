@@ -28,6 +28,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "Action.h"
 #include "YesNoMessageBox.h"
 #include "Table.h"
+#include "SpinControl.h"
 
 #define ART_BANNER		"gfx/shell/head_creategame"
 
@@ -67,10 +68,27 @@ public:
 	CMenuCreateGame *parent;
 };
 
+// the gamepad UI picks the map with a spin over the same list: its title, or its name where it has none
+class CMenuMapNamesModel : public CMenuBaseArrayModel
+{
+public:
+	CMenuMapNamesModel( CMenuMapListModel *maps ) : maps( maps ) { }
+
+	void Update() override { }
+	int GetRows() const override { return maps->GetRows(); }
+	const char *GetText( int line ) override
+	{
+		const map_t &map = maps->Element( line );
+		return map.desc[0] && strcmp( map.desc, "No Title" ) ? map.desc : map.name;
+	}
+
+	CMenuMapListModel *maps;
+};
+
 class CMenuCreateGame : public CMenuFramework
 {
 public:
-	CMenuCreateGame() : CMenuFramework("CMenuCreateGame"), mapsListModel( this ) { }
+	CMenuCreateGame() : CMenuFramework("CMenuCreateGame"), mapsListModel( this ), mapNames( &mapsListModel ) { }
 	static void Begin( CMenuBaseItem *pSelf, void *pExtra );
 
 	void Show() override;
@@ -87,6 +105,11 @@ public:
 
 	CMenuTable        mapsList;
 	CMenuMapListModel mapsListModel;
+
+	// the gamepad UI's column: the map and the number of players go round with left and right
+	CMenuMapNamesModel mapNames;
+	CMenuSpinControl  mapSpin;
+	CMenuSpinControl  playersSpin;
 
 	CMenuPicButton *done;
 private:
@@ -289,6 +312,60 @@ void CMenuCreateGame::_Init( void )
 	msgBox.Link( this );
 
 	AddButton( L( "GameUI_Cancel" ), nullptr, PC_CANCEL, VoidCb( &CMenuCreateGame::Hide ) );
+
+	if( uiStatic.gamepadUI )
+	{
+		// One column, as the other settings pages: name, map, players, password, then the buttons under
+		// them. The map table stays the store of the choice, hidden; a table takes up and down for itself
+		// and would leave the pad no way out of it.
+		int y = UI_CONTENT_TOP;
+
+		hostName.SetRect( UI_ITEM_COLUMN, y, UI_ITEM_WIDTH, 32 ); y += UI_ROW_NAMED + UI_GROUP_STEP;
+
+		mapSpin.szName = L( "GameUI_Map" );
+		mapSpin.Setup( &mapNames );
+		mapSpin.SetRect( UI_ITEM_COLUMN, y, UI_ITEM_WIDTH, 32 ); y += UI_ROW_NAMED + UI_GROUP_STEP;
+		SET_EVENT_MULTI( mapSpin.onChanged,
+		{
+			CMenuCreateGame *parent = pSelf->GetParent( CMenuCreateGame );
+			parent->mapsList.SetCurrentIndex( (int)parent->mapSpin.GetCurrentValue( ));
+		});
+
+		playersSpin.szName = L( "GameUI_MaxPlayers" );
+		playersSpin.Setup( 2, MAX_CLIENTS, 1 );
+		playersSpin.SetRect( UI_ITEM_COLUMN, y, UI_ITEM_WIDTH, 32 ); y += UI_ROW_NAMED + UI_GROUP_STEP;
+		SET_EVENT_MULTI( playersSpin.onChanged,
+		{
+			CMenuCreateGame *parent = pSelf->GetParent( CMenuCreateGame );
+			char buf[8];
+
+			snprintf( buf, sizeof( buf ), "%d", (int)parent->playersSpin.GetCurrentValue( ));
+			parent->maxClients.SetBuffer( buf );
+		});
+
+		password.SetRect( UI_ITEM_COLUMN, y, UI_ITEM_WIDTH, 32 ); y += UI_ROW_NAMED + UI_GROUP_STEP;
+
+		mapsList.SetVisibility( false );
+		maxClients.SetVisibility( false );
+		SetButtonTop( y );
+
+		AddItem( hostName );
+		AddItem( mapSpin );
+		AddItem( playersSpin );
+		AddItem( password );
+		AddItem( maxClients );
+		AddItem( mapsList );
+
+		// the buttons were added first; the pad walks items in the order they were added, so they move to
+		// the end, where they stand on the screen
+		for( int i = 0; i < m_iBtnsNum; i++ )
+		{
+			RemoveItem( *m_apBtns[i] );
+			AddItem( *m_apBtns[i] );
+		}
+		return;
+	}
+
 	AddItem( hostName );
 	AddItem( maxClients );
 	AddItem( password );
@@ -298,6 +375,9 @@ void CMenuCreateGame::_Init( void )
 
 void CMenuCreateGame::_VidInit()
 {
+	if( uiStatic.gamepadUI )
+		return; // the column is laid out once, in _Init
+
 	nat.SetCoord( 72, 685 );
 	nat.Hide();
 	// if( !EngFuncs::GetCvarFloat("public") )
@@ -321,6 +401,13 @@ void CMenuCreateGame::Show()
 	nat.UpdateCvar( true );
 
 	CMenuBaseWindow::Show();
+
+	if( uiStatic.gamepadUI )
+	{
+		// the spins show what the hidden table and field hold
+		mapSpin.SetCurrentValue( (float)Q_max( 0, mapsList.GetCurrentIndex( )));
+		playersSpin.SetCurrentValue( (float)bound( 2, atoi( maxClients.GetBuffer( )), MAX_CLIENTS ));
+	}
 }
 
 void CMenuCreateGame::SaveCvars()

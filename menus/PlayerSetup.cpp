@@ -43,6 +43,7 @@ public:
 	void SetConfig();
 	void UpdateModel();
 	void UpdateLogo();
+	void GamepadLayout( void );
 	void ApplyColorToImagePreview();
 	void ApplyColorToLogoPreview();
 	void WriteNewLogo();
@@ -624,6 +625,12 @@ void CMenuPlayerSetup::_Init( void )
 	}
 	}
 
+	if( uiStatic.gamepadUI )
+	{
+		GamepadLayout();
+		return;
+	}
+
 	AddItem( name );
 	AddItem( voiceEnable );
 	AddItem( transmitVolume );
@@ -651,6 +658,75 @@ void CMenuPlayerSetup::_Init( void )
 			AddItem( view );
 		}
 	}
+}
+
+/*
+=================
+CMenuPlayerSetup::GamepadLayout
+
+The gamepad UI's page: one column of what a player sets - name, model, colours, spray, voice - with the
+buttons under it, and the model and the spray to its right. The colour picker and the voice volumes stay on
+the desktop page; the pad has no use for a free colour field.
+=================
+*/
+void CMenuPlayerSetup::GamepadLayout( void )
+{
+	const bool models = !( gMenu.m_gameinfo.flags & GFL_NOMODELS );
+	int y = UI_CONTENT_TOP;
+
+	bSaveOnBack = true;
+
+	name.SetRect( UI_ITEM_COLUMN, y, UI_ITEM_WIDTH, 32 ); y += UI_ROW_NAMED + UI_GROUP_STEP;
+	AddItem( name );
+
+	if( models )
+	{
+		model.szName = L( "Model" );
+		topColor.szName = L( "Top color" );
+		bottomColor.szName = L( "Bottom color" );
+		model.SetRect( UI_ITEM_COLUMN, y, UI_ITEM_WIDTH, 32 ); y += UI_ROW_NAMED + UI_GROUP_STEP; // a spin's box is taller than a bar
+		topColor.SetCoord( UI_ITEM_COLUMN, y ); y += UI_ROW_NAMED;
+		bottomColor.SetCoord( UI_ITEM_COLUMN, y ); y += UI_ROW_NAMED;
+		topColor.size.w = bottomColor.size.w = UI_ITEM_WIDTH;
+		AddItem( model );
+		AddItem( topColor );
+		AddItem( bottomColor );
+
+		if( !hideModels )
+		{
+			view.SetRect( 520, 250, 260, 300 );
+			AddItem( view );
+		}
+	}
+
+	if( !hideLogos )
+	{
+		logo.szName = L( "GameUI_SpraypaintImage" );
+		logoImage.szName = NULL; // the spin under the column names it
+		// under its picture, as the desktop page has it: the column would run into the legend otherwise
+		logoImage.SetRect( 830, 250, 200, 200 );
+		logo.SetRect( 830, 250 + 200 + 40, 200, 32 ); // its name stands above it, clear of the picture
+		UpdateLogo();
+		AddItem( logo );
+		AddItem( logoImage );
+	}
+
+	y += UI_GROUP_STEP;
+	voiceEnable.SetCoord( UI_ITEM_COLUMN, y ); y += UI_ROW_STEP + UI_GROUP_STEP;
+	AddItem( voiceEnable );
+
+	// the buttons were added before the column; the pad walks items in the order they were added, so they
+	// move to the end, where they stand on the screen. Game options and Adv. options are desktop pages.
+	for( int i = 0; i < m_iBtnsNum; i++ )
+	{
+		RemoveItem( *m_apBtns[i] );
+		if( i > 0 )
+			m_apBtns[i]->SetVisibility( false );
+		else
+			AddItem( *m_apBtns[i] );
+	}
+
+	SetButtonTop( y );
 }
 
 void CMenuPlayerSetup::Reload()
