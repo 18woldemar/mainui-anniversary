@@ -100,14 +100,20 @@ CMenuAudio::SetConfig
 */
 void CMenuAudio::SaveAndPopMenu()
 {
+	// only what this page put on the screen: a control that was never shown must not write its cvar on
+	// the way out
 	soundVolume.WriteCvar();
 	musicVolume.WriteCvar();
 	suitVolume.WriteCvar();
-	vibration.WriteCvar();
-	noDSP.WriteCvar();
-	useAlphaDSP.WriteCvar();
-	muteFocusLost.WriteCvar();
-	vibrationEnable.WriteCvar();
+
+	if( !uiStatic.gamepadUI )
+	{
+		vibration.WriteCvar();
+		noDSP.WriteCvar();
+		useAlphaDSP.WriteCvar();
+		muteFocusLost.WriteCvar();
+		vibrationEnable.WriteCvar();
+	}
 
 	// a control that was never shown must not write its cvar on the way out
 	if( EngFuncs::FileExists( "subtitles.txt" ))
@@ -180,6 +186,40 @@ void CMenuAudio::_Init( void )
 	subtitleScale.onChanged = CMenuEditable::WriteCvarCb;
 	subtitleScale.SetCoord( 700, 620 ); // the sliders of this page are 60 apart
 	subtitleScale.size.w = 300;
+
+	if( uiStatic.gamepadUI )
+	{
+		// three volumes, then the captions as a group of their own, in one column; room effects stay as
+		// they are and vibration is on the Controller page
+		int y = UI_CONTENT_TOP;
+
+		soundVolume.SetCoord( UI_ITEM_COLUMN, y ); y += UI_ROW_NAMED;
+		musicVolume.SetCoord( UI_ITEM_COLUMN, y ); y += UI_ROW_NAMED;
+		suitVolume.SetCoord( UI_ITEM_COLUMN, y ); y += UI_ROW_NAMED + UI_GROUP_STEP;
+
+		subtitles.SetCoord( UI_ITEM_COLUMN, y ); y += UI_ROW_NAMED + UI_GROUP_STEP; // the next row's name sits above its bar
+		subtitleScale.SetCoord( UI_ITEM_COLUMN, y ); y += UI_ROW_NAMED + UI_GROUP_STEP;
+
+		soundVolume.size.w = musicVolume.size.w = suitVolume.size.w = UI_ITEM_WIDTH;
+		subtitleScale.size.w = UI_ITEM_WIDTH;
+
+		// Done goes under what it applies to. Without captions the page is three rows shorter.
+		SetButtonTop( EngFuncs::FileExists( "subtitles.txt" ) ? y : UI_CONTENT_TOP + 3 * UI_ROW_NAMED + UI_GROUP_STEP );
+
+		bSaveOnBack = true;
+		musicVolume.szName = L( "Music volume" );
+		AddItem( banner );
+		AddItem( soundVolume );
+		AddItem( musicVolume );
+		AddItem( suitVolume );
+		if( EngFuncs::FileExists( "subtitles.txt" ))
+		{
+			AddItem( subtitles );
+			AddItem( subtitleScale );
+		}
+		AddButton( L( "Done" ), nullptr, PC_DONE, VoidCb( &CMenuAudio::SaveAndPopMenu ));
+		return;
+	}
 
 	AddItem( banner );
 	AddButton( L( "Done" ), nullptr, PC_DONE, VoidCb( &CMenuAudio::SaveAndPopMenu ));

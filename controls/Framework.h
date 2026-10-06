@@ -21,6 +21,9 @@ GNU General Public License for more details.
 
 #define MAX_FRAMEWORK_PICBUTTONS 16
 
+// the pad buttons a page or a dialog answers to, at the bottom right of the gamepad UI; NULL hides one
+void UI_DrawLegend( const char *a, const char *x_label, const char *b );
+
 /*
  * WON-style menu framework
  */
@@ -49,9 +52,19 @@ public:
 
 	void RealignButtons();
 
+	// where the page's own buttons start, so a Done can sit under the controls rather than above them
+	void SetButtonTop( int y ) { m_iBtnTop = y; RealignButtons(); }
+
+	// how much room the gamepad UI's status column has before it would run into something the page draws
+	void SetStatusWidth( int w ) { m_iStatusWidth = w; }
+
 	bool DrawAnimation() override;
 
 	void PrepareBannerAnimation( EAnimation direction, CMenuPicButton *initiator );
+
+	// the pad buttons the page answers to in the gamepad UI (menu strings; NULL hides one). Pages change
+	// them with their state
+	const char *legendA, *legendB, *legendX;
 
 	class CMenuBannerBitmap : public CMenuBaseItem
 	{
@@ -67,11 +80,15 @@ public:
 	} banner;
 
 protected:
+	void DrawLegend();
+
 	EAnimation bannerAnimDirection;
 	Rect bannerRects[2];
 
 	CMenuPicButton *m_apBtns[MAX_FRAMEWORK_PICBUTTONS];
 	int m_iBtnsNum;
+	int m_iBtnTop;
+	int m_iStatusWidth;
 };
 
 #endif // FRAMEWORK_H

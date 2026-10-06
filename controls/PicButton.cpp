@@ -228,7 +228,8 @@ void CMenuPicButton::Draw( )
 {
 	int state = BUTTON_NOFOCUS;
 
-	if( iFlags & (QMF_HASMOUSEFOCUS|QMF_HASKEYBOARDFOCUS))
+	// gamepad UI: one source of truth, the item the pad acts on glows
+	if( uiStatic.gamepadUI ? IsCurrentSelected() : FBitSet( iFlags, QMF_HASMOUSEFOCUS|QMF_HASKEYBOARDFOCUS ))
 	{
 		state = BUTTON_FOCUS;
 	}
@@ -244,7 +245,10 @@ void CMenuPicButton::Draw( )
 	{
 		Point coord;
 
-		coord.x = m_scPos.x + ( uiStatic.buttons_draw_size.w + 40 ) * uiStatic.scaleX;
+		if( uiStatic.gamepadUI )
+			coord.x = UI_STATUS_COLUMN * uiStatic.scaleX; // the one column every page explains its focused item in
+		else
+			coord.x = m_scPos.x + ( uiStatic.buttons_draw_size.w + 40 ) * uiStatic.scaleX;
 		coord.y = m_scPos.y + m_scSize.h / 2 - EngFuncs::ConsoleCharacterHeight() / 2;
 
 		int	r, g, b;

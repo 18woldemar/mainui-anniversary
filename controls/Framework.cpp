@@ -14,6 +14,8 @@ GNU General Public License for more details.
 */
 #include "Framework.h"
 #include "PicButton.h"
+#include "Utils.h"
+#include "FontManager.h"
 
 // menu banners used fiexed rectangle (virtual screenspace at 640x480)
 #define UI_BANNER_POSX		72
@@ -25,7 +27,12 @@ CMenuFramework::CMenuFramework( const char *name ) : BaseClass( name )
 {
 	memset( m_apBtns, 0, sizeof( m_apBtns ) );
 	m_iBtnsNum = 0;
+	m_iBtnTop = 230;
+	m_iStatusWidth = 1024 - UI_STATUS_COLUMN - 40;
 	bannerAnimDirection = ANIM_NO;
+	legendA = "Select";
+	legendB = "Back";
+	legendX = NULL;
 }
 
 CMenuFramework::~CMenuFramework()
@@ -67,17 +74,122 @@ void CMenuFramework::Draw()
 	if( item && item == lastItem && !FBitSet( item->iFlags, QMF_NOTIFY ) && item->szStatusText != NULL )
 	{
 		float alpha = bound( 0, ((( uiStatic.realTime - statusFadeTime ) - 100 ) * 0.01f ), 1 );
-		int r, g, b, x, len;
+		int r, g, b, x, y, len;
 
 		EngFuncs::ConsoleStringLen( item->szStatusText, &len, NULL );
 
 		UnpackRGB( r, g, b, uiColorHelp );
 		EngFuncs::DrawSetTextColor( r, g, b, alpha * 255 );
-		x = ( ScreenWidth - len ) * 0.5f; // centering
 
-		EngFuncs::DrawConsoleString( x, uiStatic.yOffset + 720 * uiStatic.scaleY, item->szStatusText );
+		if( uiStatic.gamepadUI )
+		{
+			// Beside the item it belongs to, in the column the pages keep clear for it - the way the
+			// pages that are lists of buttons already say it, and inside the safe area, which the centred
+			// line below is not. A line too long for the column is wrapped rather than drawn over
+			// whatever the page holds to its right.
+			const int charH = EngFuncs::ConsoleCharacterHeight();
+			const int room = m_iStatusWidth * uiStatic.scaleX;
+			const char *rest = item->szStatusText;
+			char line[4][256];
+			int count = 0;
+
+			x = UI_STATUS_COLUMN * uiStatic.scaleX;
+
+			while( *rest && count < 4 )
+			{
+				int take = 0;
+
+				for( int i = 0; ; i++ )
+				{
+					if( rest[i] && rest[i] != ' ' )
+						continue;
+
+					Q_strncpy( line[count], rest, Q_min( (size_t)i + 1, sizeof( line[0] )));
+					EngFuncs::ConsoleStringLen( line[count], &len, NULL );
+
+					if( len > room && take )
+						break; // the previous word was the last one that fitted
+
+					take = i;
+
+					if( !rest[i] )
+						break;
+				}
+
+				Q_strncpy( line[count], rest, Q_min( (size_t)take + 1, sizeof( line[0] )));
+				rest += take;
+				while( *rest == ' ' ) rest++;
+				count++;
+			}
+
+			y = item->GetRenderPosition().y + item->GetRenderSize().h / 2 - charH * count / 2;
+
+			for( int i = 0; i < count; i++ )
+				EngFuncs::DrawConsoleString( x, y + i * charH, line[i] );
+		}
+		else
+		{
+			x = ( ScreenWidth - len ) * 0.5f; // centering
+			y = uiStatic.yOffset + 720 * uiStatic.scaleY;
+
+			EngFuncs::DrawConsoleString( x, y, item->szStatusText );
+		}
 	}
 	else statusFadeTime = uiStatic.realTime;
+
+	if( uiStatic.gamepadUI && m_pStack->Current() == this ) // a dialog on top has its own buttons
+		DrawLegend();
+}
+
+/*
+=================
+UI_DrawLegend
+
+The pad buttons the page answers to, right-aligned at the bottom of the TV safe area (5% in from the
+edges): A, then X, then B at the edge, as console menus put them.
+=================
+*/
+void UI_DrawLegend( const char *a, const char *x_label, const char *b )
+{
+	// a CImage loads when it is made and keeps the handle, so these are made once and not three times a
+	// frame - but a video restart leaves the handles pointing at nothing, so they are made again then
+	static CImage icons[3] = { CImage( "gfx/shell/pad_a" ), CImage( "gfx/shell/pad_x" ), CImage( "gfx/shell/pad_b" ) };
+	static int loaded = uiVidGeneration;
+
+	if( loaded != uiVidGeneration )
+	{
+		loaded = uiVidGeneration;
+		icons[0].Load( "gfx/shell/pad_a" );
+		icons[1].Load( "gfx/shell/pad_x" );
+		icons[2].Load( "gfx/shell/pad_b" );
+	}
+	const char *labels[3] = { a, x_label, b };
+	const int icon = 36 * uiStatic.scaleY;
+	const int charH = UI_SMALL_CHAR_HEIGHT * uiStatic.scaleY;
+	const int gap = 8 * uiStatic.scaleX;
+	const int y = ScreenHeight - ScreenHeight / 20 - icon;
+	int x = ScreenWidth - ScreenWidth / 20;
+
+	for( int i = 2; i >= 0; i-- )
+	{
+		if( !labels[i] )
+			continue;
+
+		const char *text = L( labels[i] );
+		const int w = g_FontMgr->GetTextWideScaled( uiStatic.hSmallFont, text, charH );
+
+		x -= w;
+		UI_DrawString( uiStatic.hSmallFont, x, y + ( icon - charH ) / 2, w, charH, text, uiPromptTextColor, charH,
+			QM_LEFT, ETF_SHADOW | ETF_NOSIZELIMIT | ETF_FORCECOL );
+		x -= gap + icon;
+		UI_DrawPic( x, y, icon, icon, uiColorWhite, icons[i], QM_DRAWTRANS );
+		x -= gap * 4;
+	}
+}
+
+void CMenuFramework::DrawLegend()
+{
+	UI_DrawLegend( legendA, legendX, legendB );
 }
 
 void CMenuFramework::Hide()
@@ -117,7 +229,7 @@ CMenuPicButton * CMenuFramework::AddButton(const char *szName, const char *szSta
 	btn->SetPicture( buttonPicId );
 	btn->iFlags |= iFlags;
 	btn->onReleased = onReleased;
-	btn->SetCoord( 72, 230 + m_iBtnsNum * 50 );
+	btn->SetCoord( 72, m_iBtnTop + m_iBtnsNum * 50 );
 	AddItem( btn );
 
 	m_apBtns[m_iBtnsNum++] = btn;
@@ -139,7 +251,7 @@ CMenuPicButton * CMenuFramework::AddButton( const char *szName, const char *szSt
 	btn->SetPicture( szButtonPath, hotkey );
 	btn->iFlags |= iFlags;
 	btn->onReleased = onReleased;
-	btn->SetCoord( 72, 230 + m_iBtnsNum * 50 );
+	btn->SetCoord( 72, m_iBtnTop + m_iBtnsNum * 50 );
 	AddItem( btn );
 
 	m_apBtns[m_iBtnsNum++] = btn;
@@ -154,7 +266,7 @@ void CMenuFramework::RealignButtons( void )
 		if( !m_apBtns[i]->IsVisible())
 			continue;
 
-		m_apBtns[i]->SetCoord( 72, 230 + j * 50 );
+		m_apBtns[i]->SetCoord( 72, m_iBtnTop + j * 50 );
 		m_apBtns[i]->CalcPosition();
 		j++;
 	}
@@ -222,6 +334,7 @@ bool CMenuFramework::DrawAnimation()
 CMenuFramework::CMenuBannerBitmap::CMenuBannerBitmap()
 {
 	SetRect( UI_BANNER_POSX, UI_BANNER_POSY, UI_BANNER_WIDTH, UI_BANNER_HEIGHT );
+	iFlags |= QMF_INACTIVE; // a heading: neither the pad nor the keyboard stops on it
 }
 
 void CMenuFramework::CMenuBannerBitmap::SetPicture(const char *pic)

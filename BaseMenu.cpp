@@ -603,6 +603,33 @@ void UI_CloseMenu( void )
 
 /*
 =================
+UI_LogFocus
+
+Developer log for scripted menu checks: the item the pad acts on, whenever it changes, and when the menu
+closes.
+=================
+*/
+static void UI_LogFocus( void )
+{
+	static CMenuBaseWindow *lastWindow;
+	static CMenuBaseItem *lastItem;
+	CMenuBaseWindow *window = uiStatic.menu.IsActive() ? uiStatic.menu.Current() : NULL;
+	CMenuBaseItem *item = window ? window->ItemAtCursor() : NULL;
+
+	if( window == lastWindow && item == lastItem )
+		return;
+
+	lastWindow = window;
+	lastItem = item;
+
+	if( !window )
+		Con_DPrintf( "menu closed\n" );
+	else
+		Con_DPrintf( "menu focus %s %s\n", window->szName, item && item->szName && item->szName[0] ? item->szName : "-" );
+}
+
+/*
+=================
 UI_UpdateMenu
 =================
 */
@@ -647,6 +674,9 @@ void UI_UpdateMenu( float flTime )
 	// let's use engine credits "feature" for drawing client windows
 	if( uiStatic.client.IsActive( ))
 		uiStatic.client.Update();
+
+	if( uiStatic.gamepadUI )
+		UI_LogFocus();
 
 	if( !uiStatic.menu.IsActive( ))
 		return;
@@ -705,6 +735,22 @@ void UI_KeyEvent( int key, int down )
 
 	clientActive = uiStatic.client.IsActive();
 	menuActive = uiStatic.menu.IsActive();
+
+	// START leaves the pause menu from any page, as it opened it: every open window gets B in turn, so
+	// settings pages keep their changes and a question is cancelled, down to the pause menu, whose B
+	// resumes the game
+	if( uiStatic.gamepadUI && key == K_START_BUTTON && down && menuActive && CL_IsActive( ))
+	{
+		for( int i = 0; i < 16 && uiStatic.menu.IsActive(); i++ )
+		{
+			const CMenuBaseWindow *window = uiStatic.menu.Current();
+
+			uiStatic.menu.KeyDownEvent( K_B_BUTTON );
+			if( uiStatic.menu.IsActive() && uiStatic.menu.Current() == window )
+				break; // a window that keeps B to itself
+		}
+		return;
+	}
 
 	if( clientActive && !menuActive )
 		down ? uiStatic.client.KeyDownEvent( key ) :
@@ -877,7 +923,9 @@ void UI_Precache( void )
 	EngFuncs::PIC_Load( UI_UPARROWFOCUS );
 	EngFuncs::PIC_Load( UI_DOWNARROW );
 	EngFuncs::PIC_Load( UI_DOWNARROWFOCUS );
-	EngFuncs::PIC_Load( "gfx/shell/splash" );
+	// data without a splash of its own (the 25th anniversary's) would only put a warning in the log
+	if( EngFuncs::FileExists( "gfx/shell/splash.bmp" ))
+		EngFuncs::PIC_Load( "gfx/shell/splash" );
 
 	// load all menu buttons
 	uiStatic.btns.LoadBmpButtons();
@@ -1022,6 +1070,8 @@ static void UI_LoadSounds( void )
 UI_VidInit
 =================
 */
+int uiVidGeneration; // counts video restarts, for the few places that cache a picture handle
+
 int UI_VidInit( void )
 {
 	static bool calledOnce = false;
@@ -1036,6 +1086,8 @@ int UI_VidInit( void )
 	{
 		UI_Precache();
 	}
+
+	uiVidGeneration++;
 
 	// don't allow screenwidth is slower than 4:3 screens
 	// it's really not intended to use, just for keeping menu working
@@ -1052,9 +1104,17 @@ int UI_VidInit( void )
 	}
 
 	uiStatic.width = ScreenWidth / uiStatic.scaleX;
-	// move cursor to screen center
-	uiStatic.cursorX = ScreenWidth / 2;
-	uiStatic.cursorY = ScreenHeight / 2;
+	if( uiStatic.gamepadUI )
+	{
+		// driven by a pad: the cursor stays off the screen, so nothing is ever under it
+		uiStatic.cursorX = uiStatic.cursorY = -1;
+	}
+	else
+	{
+		// move cursor to screen center
+		uiStatic.cursorX = ScreenWidth / 2;
+		uiStatic.cursorY = ScreenHeight / 2;
+	}
 	uiStatic.outlineWidth = 4;
 
 	UI_ScaleCoords( NULL, NULL, &uiStatic.outlineWidth, NULL );
@@ -1164,6 +1224,7 @@ void UI_Init( void )
 	g_FontMgr = new CFontManager();
 
 	uiStatic.initialized = true;
+	uiStatic.gamepadUI = EngFuncs::GetCvarFloat( "ui_gamepadui" ) != 0.0f;
 	uiStatic.lowmemory = (int)EngFuncs::GetCvarFloat( "host_lowmemorymode" );
 
 	// setup game info

@@ -34,6 +34,15 @@ GNU General Public License for more details.
 
 // menu buttons default dims
 #define UI_BUTTONS_WIDTH  250 // ( 156 / 640 ) * 1024
+// One layout for every page of the gamepad UI: the items start at UI_ITEM_COLUMN, nothing of theirs reaches
+// past UI_ITEM_WIDTH, and the text that explains the focused item stands at UI_STATUS_COLUMN beside it.
+#define UI_ITEM_COLUMN    72
+#define UI_ITEM_WIDTH     300
+#define UI_STATUS_COLUMN  ( UI_ITEM_COLUMN + UI_ITEM_WIDTH + 28 )
+#define UI_CONTENT_TOP    280 // the first row under a page banner
+#define UI_ROW_STEP       50  // one row to the next
+#define UI_ROW_NAMED      60  // a row whose control carries its name above itself
+#define UI_GROUP_STEP     24  // added once where a group of rows ends
 #define UI_BUTTONS_HEIGHT 42  // ( 26 / 480 ) * 768
 
 #define UI_DESCEND			"gfx/shell/down"
@@ -129,7 +138,12 @@ typedef struct
 	int lowmemory;
 
 	char sounds[SND_COUNT][40];
+
+	// the console menu, made for a pad (the engine's ui_gamepadui: -gamepadui, a Deck, Big Picture)
+	bool gamepadUI;
 } uiStatic_t;
+
+extern int uiVidGeneration; // bumped by UI_VidInit: a picture handle from an older one is not valid
 
 extern float	cursorDY;			// use for touch scroll
 extern bool g_bCursorDown;
@@ -280,6 +294,7 @@ void UI_ServerBrowser_Menu( void );
 void UI_PlayerSetup_Menu( void );
 void UI_Controls_Menu( void );
 void UI_AdvControls_Menu( void );
+void UI_Controller_Menu( void );
 void UI_GameOptions_Menu( void );
 void UI_CreateGame_Menu( void );
 void UI_Audio_Menu( void );

@@ -652,7 +652,7 @@ void CMenuTable::Draw()
 	{
 		int color;
 
-		if( eFocusAnimation == QM_HIGHLIGHTIFFOCUS && iFlags & QMF_HASKEYBOARDFOCUS )
+		if( eFocusAnimation == QM_HIGHLIGHTIFFOCUS && ( uiStatic.gamepadUI ? IsCurrentSelected() : FBitSet( iFlags, QMF_HASKEYBOARDFOCUS )))
 			color = iStrokeFocusedColor;
 		else
 			color = colorStroke;

@@ -70,6 +70,7 @@ public:
 	}
 
 	bool bAllowDrag;
+	bool bSaveOnBack; // settings pages of the gamepad UI: B keeps the changes (SaveAndPopMenu), as console menus do
 	EAnimation eTransitionType; // valid only when in transition
 
 	const CWindowStack *WindowStack() const

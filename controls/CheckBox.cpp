@@ -82,6 +82,22 @@ bool CMenuCheckBox::KeyDown( int key )
 {
 	const char	*sound = 0;
 
+	// gamepad UI: left turns it off, right on - a held direction repeats in the menu, and a toggle would
+	// flicker
+	if( uiStatic.gamepadUI && ( UI::Key::IsLeftArrow( key ) || UI::Key::IsRightArrow( key )))
+	{
+		const bool want = UI::Key::IsRightArrow( key );
+
+		if( bChecked != want )
+		{
+			bChecked = want;
+			SetCvarValue( bChecked );
+			_Event( QM_CHANGED );
+			PlayLocalSound( uiStatic.sounds[SND_GLOW] );
+		}
+		return true;
+	}
+
 	if( UI::Key::IsLeftMouse( key ) && FBitSet( iFlags, QMF_HASMOUSEFOCUS ))
 		sound = uiStatic.sounds[SND_GLOW];
 	else if( UI::Key::IsEnter( key ) && !FBitSet( iFlags, QMF_MOUSEONLY ))

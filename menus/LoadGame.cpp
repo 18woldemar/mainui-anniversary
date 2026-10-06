@@ -33,6 +33,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #define LEVELSHOT_Y		400
 #define LEVELSHOT_W		260
 #define LEVELSHOT_H		160
+#define LEVELSHOT_Y_PAD	255 // gamepad UI: its top where the first item of every other page is drawn
 
 #define MAX_CELLSTRING CS_SIZE
 
@@ -134,6 +135,7 @@ public:
 	}
 
 	void OnDeleteEntry( int line ) override;
+	void OnActivateEntry( int line ) override;
 private:
 	CMenuLoadGame *parent;
 };
@@ -146,7 +148,12 @@ public:
 	// true to turn this menu into save mode, false to turn into load mode
 	void SetSaveMode( bool saveMode );
 	bool IsSaveMode() { return m_fSaveMode; }
-	void UpdateList() { savesListModel.Update(); }
+	void UpdateList()
+	{
+		if( uiStatic.gamepadUI )
+			savesList.SetCurrentIndex( 0 ); // every visit starts on the newest save (or the new one)
+		savesListModel.Update();
+	}
 
 private:
 	void _Init( void );
@@ -155,6 +162,16 @@ private:
 	void SaveGame();
 	void UpdateGame();
 	void DeleteGame();
+
+	// the gamepad UI: the pad drives the table, the legend names its buttons
+	void ActivateEntry();
+	void AskDelete();
+	void Ask( const char *question, CEventCallback onYes );
+	// the model puts the "new save" row first, and only while a game is running
+	bool IsNewRow( int row ) { return IsSaveMode() && CL_IsActive() && row == 0; }
+
+	CMenuAction hint;
+	CMenuAction noSaves;
 
 	CMenuPicButton	load;
 	CMenuPicButton  save;
@@ -177,9 +194,18 @@ private:
 void CMenuSavePreview::Draw()
 {
 	if( saveshot.IsValid( ))
+	{
 		UI_DrawPic( m_scPos, m_scSize, uiColorWhite, saveshot );
-	else
-		UI_DrawPic( m_scPos, m_scSize, uiColorWhite, fallback, QM_DRAWADDITIVE );
+	}
+	else if( uiStatic.gamepadUI )
+	{
+		// a save without a picture of its own shows an empty box that says so in the middle
+		const int charH = EngFuncs::ConsoleCharacterHeight();
+
+		UI_DrawString( uiStatic.hSmallFont, m_scPos.x, m_scPos.y + ( m_scSize.h - charH ) / 2, m_scSize.w,
+			charH, L( "No picture" ), uiColorHelp, charH, QM_CENTER, ETF_SHADOW | ETF_FORCECOL );
+	}
+	else UI_DrawPic( m_scPos, m_scSize, uiColorWhite, fallback, QM_DRAWADDITIVE );
 
 	// draw the rectangle
 	UI_DrawRectangle( m_scPos, m_scSize, uiInputFgColor );
@@ -319,7 +345,16 @@ void CMenuSavesListModel::Update( void )
 
 void CMenuSavesListModel::OnDeleteEntry( int line )
 {
-	parent->msgBox.Show();
+	if( !uiStatic.gamepadUI )
+		parent->msgBox.Show();
+	else if( !parent->IsNewRow( line ))
+		parent->AskDelete();
+}
+
+void CMenuSavesListModel::OnActivateEntry( int line )
+{
+	if( uiStatic.gamepadUI )
+		parent->ActivateEntry();
 }
 
 /*
@@ -364,6 +399,38 @@ void CMenuLoadGame::_Init( void )
 	msgBox.Link( this );
 
 	levelShot.SetRect( LEVELSHOT_X, LEVELSHOT_Y, LEVELSHOT_W, LEVELSHOT_H );
+
+	if( uiStatic.gamepadUI )
+	{
+		// the pad drives the table and the legend names its buttons, so the button column goes; the list
+		// stays inside the TV safe area and above the legend
+		savesList.szName = "";
+		savesList.SetRect( 360, 230, -68, 440 );
+		savesList.SetupColumn( 0, L( "GameUI_Time" ), 0.30f );
+		savesList.SetupColumn( 1, L( "GameUI_Game" ), 0.50f );
+		savesList.SetupColumn( 2, L( "GameUI_ElapsedTime" ), 0.20f );
+
+		hint.iFlags = QMF_INACTIVE;
+		hint.colorBase = uiColorHelp;
+		hint.SetCharSize( QM_SMALLFONT );
+		hint.szName = L( "Hold BACK in a game\nto quicksave" );
+		hint.SetCoord( 72, LEVELSHOT_Y_PAD + LEVELSHOT_H + 24 );
+
+		// the picture starts where the list starts, instead of floating halfway down beside it
+		levelShot.SetRect( LEVELSHOT_X, LEVELSHOT_Y_PAD, LEVELSHOT_W, LEVELSHOT_H );
+
+		noSaves.iFlags = QMF_INACTIVE;
+		noSaves.colorBase = uiColorHelp;
+		noSaves.szName = L( "No saved games" );
+		noSaves.SetCoord( 380, 290 );
+
+		AddItem( banner );
+		AddItem( levelShot );
+		AddItem( savesList );
+		AddItem( hint );
+		AddItem( noSaves );
+		return;
+	}
 
 	AddItem( banner );
 	AddItem( load );
@@ -417,6 +484,15 @@ void CMenuLoadGame::UpdateGame()
 		remove.SetGrayed( false );
 		levelShot.SetSaveName( savesListModel[savesList.GetCurrentIndex( )].name );
 	}
+
+	if( uiStatic.gamepadUI )
+	{
+		const bool rows = savesListModel.GetRows() > 0;
+
+		legendA = rows ? "Select" : NULL;
+		legendX = rows && !IsNewRow( savesList.GetCurrentIndex( )) ? "Delete" : NULL;
+		noSaves.SetVisibility( !rows );
+	}
 }
 
 void CMenuLoadGame::DeleteGame()
@@ -434,6 +510,51 @@ void CMenuLoadGame::DeleteGame()
 	EngFuncs::PIC_Free( cmd );
 
 	savesListModel.Update();
+
+	// the row that was deleted is gone: the cursor must land on a row that is there
+	if( savesList.GetCurrentIndex() >= savesListModel.GetRows( ))
+		savesList.SetCurrentIndex( savesListModel.GetRows() - 1 );
+
+	// whichever row was deleted, Update() read the one that stood where the cursor stands now, and moving
+	// the cursor does not tell the preview: it is asked again here
+	UpdateGame();
+}
+
+/*
+=================
+CMenuLoadGame::ActivateEntry
+
+Gamepad UI, A on a row: the new row saves at once; an existing one is overwritten or loaded, loading over a
+game in progress after a question. Questions start on Cancel.
+=================
+*/
+void CMenuLoadGame::ActivateEntry()
+{
+	const int row = savesList.GetCurrentIndex();
+
+	if( !savesListModel.IsValidIndex( row ))
+		return;
+
+	if( IsNewRow( row ))
+		SaveGame();
+	else if( IsSaveMode( ))
+		Ask( L( "Overwrite this saved game?" ), VoidCb( &CMenuLoadGame::SaveGame ));
+	else if( CL_IsActive( ))
+		Ask( L( "Loading a saved game will exit\nany current game, OK to exit?" ), VoidCb( &CMenuLoadGame::LoadGame ));
+	else
+		LoadGame();
+}
+
+void CMenuLoadGame::AskDelete()
+{
+	Ask( L( "Delete this saved game?" ), VoidCb( &CMenuLoadGame::DeleteGame ));
+}
+
+void CMenuLoadGame::Ask( const char *question, CEventCallback onYes )
+{
+	msgBox.SetMessage( question );
+	msgBox.onPositive = onYes;
+	msgBox.Show();
 }
 
 void CMenuLoadGame::SetSaveMode( bool saveMode )

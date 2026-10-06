@@ -53,6 +53,7 @@ private:
 	void Think() override;
 
 	void VidInit(bool connected);
+	void GamepadLayout( bool connected, int hoffset, int yoffset, int ygap );
 
 	void DisconnectCb();
 	void DisconnectDialogCb();
@@ -69,6 +70,10 @@ private:
 	CMenuPicButton	hazardCourse;
 	CMenuPicButton	configuration;
 	CMenuPicButton	saveRestore;
+	// the gamepad UI's order: in a game Save game and Load game follow Resume game; without one, Load game
+	// follows New game (saveRestore)
+	CMenuPicButton	saveGame;
+	CMenuPicButton	loadGameInGame;
 	CMenuPicButton	multiPlayer;
 	CMenuPicButton	customGame;
 	CMenuPicButton	previews;
@@ -126,6 +131,16 @@ CMenuMain::Key
 */
 bool CMenuMain::KeyDown( int key )
 {
+	// gamepad UI: B resumes the game; without one there is nothing to go back to, as on console menus.
+	// B only gets here with this page on top, so no dialog check: when START sends B down the stack
+	// (UI_KeyEvent), a question it has just cancelled is still in the stack until the next frame
+	if( uiStatic.gamepadUI && UI::Key::IsEscape( key ))
+	{
+		if( CL_IsActive( ))
+			UI_CloseMenu();
+		return true;
+	}
+
 	if( UI::Key::IsEscape( key ) )
 	{
 		if ( CL_IsActive( ))
@@ -218,6 +233,16 @@ void CMenuMain::_Init( void )
 
 	saveRestore.iFlags |= QMF_NOTIFY;
 
+	saveGame.SetNameAndStatus( L( "GameUI_SaveGame" ), L( "Save the current game." ));
+	saveGame.SetPicture( PC_SAVE_GAME );
+	saveGame.iFlags |= QMF_NOTIFY;
+	saveGame.onReleased = UI_SaveGame_Menu;
+
+	loadGameInGame.SetNameAndStatus( L( "GameUI_LoadGame" ), L( "StringsList_191" ));
+	loadGameInGame.SetPicture( PC_LOAD_GAME );
+	loadGameInGame.iFlags |= QMF_NOTIFY;
+	loadGameInGame.onReleased = UI_LoadGame_Menu;
+
 	customGame.SetNameAndStatus( L( "GameUI_ChangeGame" ), L( "StringsList_530" ) );
 	customGame.SetPicture( PC_CUSTOM_GAME );
 	customGame.iFlags |= QMF_NOTIFY;
@@ -269,6 +294,12 @@ void CMenuMain::_Init( void )
 		newGame.SetGrayed( true );
 	}
 
+	if( uiStatic.gamepadUI )
+	{
+		animatedBanner.iFlags |= QMF_INACTIVE; // the title is not a stop for the pad
+		movieBanner.iFlags |= QMF_INACTIVE;
+	}
+
 	if( FBitSet( gMenu.m_gameinfo.flags, GFL_ANIMATED_TITLE ))
 	{
 		if( animatedBanner.TryLoad())
@@ -283,6 +314,32 @@ void CMenuMain::_Init( void )
 
 	AddItem( banner );
 	AddItem( console );
+
+	if( uiStatic.gamepadUI )
+	{
+		// a single-player menu for a pad: no server browser, no web browser, no window to close or minimize
+		saveRestore.SetNameAndStatus( L( "GameUI_LoadGame" ), L( "StringsList_191" ));
+		saveRestore.SetPicture( PC_LOAD_GAME );
+		saveRestore.onReleased = UI_LoadGame_Menu;
+
+		AddItem( resumeGame );
+		AddItem( saveGame );
+		AddItem( loadGameInGame );
+		AddItem( newGame );
+		AddItem( saveRestore );
+
+		if ( bTrainMap )
+			AddItem( hazardCourse );
+
+		AddItem( configuration );
+
+		if ( bCustomGame )
+			AddItem( customGame );
+
+		AddItem( quit );
+		return;
+	}
+
 	AddItem( disconnect );
 	AddItem( resumeGame );
 	AddItem( newGame );
@@ -321,6 +378,12 @@ void CMenuMain::VidInit( bool connected )
 	// statically positioned items
 	minimizeBtn.SetRect( uiStatic.width - 72, 13, 32, 32 );
 	quitButton.SetRect( uiStatic.width - 36, 13, 32, 32 );
+
+	if( uiStatic.gamepadUI )
+	{
+		GamepadLayout( connected, hoffset, previews_voffset, ygap );
+		return;
+	}
 
 	previews.SetCoord( hoffset, previews_voffset );
 	quit.SetCoord( hoffset, previews_voffset + ygap );
@@ -385,6 +448,60 @@ void CMenuMain::VidInit( bool connected )
 		saveRestore.SetPicture( PC_LOAD_GAME );
 		saveRestore.onReleased = UI_LoadGame_Menu;
 	}
+}
+
+/*
+=================
+CMenuMain::GamepadLayout
+
+The gamepad UI's column, bottom up in the order of _Init; it closes up where Previews and Multiplayer were.
+=================
+*/
+void CMenuMain::GamepadLayout( bool connected, int hoffset, int yoffset, int ygap )
+{
+	quit.SetCoord( hoffset, yoffset + ygap );
+
+	if( bCustomGame )
+	{
+		customGame.SetCoord( hoffset, yoffset );
+		yoffset -= ygap;
+	}
+
+	configuration.SetCoord( hoffset, yoffset );
+	yoffset -= ygap;
+
+	if( bTrainMap )
+	{
+		hazardCourse.SetCoord( hoffset, yoffset );
+		yoffset -= ygap;
+	}
+
+	if( !connected )
+	{
+		saveRestore.SetCoord( hoffset, yoffset );
+		yoffset -= ygap;
+	}
+
+	newGame.SetCoord( hoffset, yoffset );
+	yoffset -= ygap;
+
+	if( connected )
+	{
+		loadGameInGame.SetCoord( hoffset, yoffset );
+		yoffset -= ygap;
+		saveGame.SetCoord( hoffset, yoffset );
+		yoffset -= ygap;
+		resumeGame.SetCoord( hoffset, yoffset );
+		yoffset -= ygap;
+	}
+
+	console.SetCoord( hoffset, yoffset );
+
+	resumeGame.SetVisibility( connected );
+	saveGame.SetVisibility( connected );
+	loadGameInGame.SetVisibility( connected );
+	saveRestore.SetVisibility( !connected );
+	legendB = connected ? "Back" : NULL; // without a game B has nothing to go back to
 }
 
 void CMenuMain::_VidInit()

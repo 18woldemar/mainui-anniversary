@@ -100,12 +100,17 @@ void CMenuVidOptions::SaveAndPopMenu( void )
 #if LEGACY_VIEWSIZE
 	screenSize.WriteCvar();
 #endif
-	detailtex.WriteCvar();
-	vbo.WriteCvar();
-	swwater.WriteCvar();
-	overbright.WriteCvar();
-	filtering.WriteCvar();
-	hudscale.WriteCvar();
+	// the gamepad UI's page has none of the renderer switches, and a switch that is not on the page has no
+	// state to save
+	if( !uiStatic.gamepadUI )
+	{
+		detailtex.WriteCvar();
+		vbo.WriteCvar();
+		swwater.WriteCvar();
+		overbright.WriteCvar();
+		filtering.WriteCvar();
+		hudscale.WriteCvar();
+	}
 	// gamma and brightness is already written
 
 	CMenuFramework::SaveAndPopMenu();
@@ -270,6 +275,34 @@ void CMenuVidOptions::_Init( void )
 		cb->bChecked = EngFuncs::GetCvarFloat( cb->CvarName() ) >= 640.0f;
 	});
 
+	if( uiStatic.gamepadUI )
+	{
+		// gamma and brightness in the column every page uses, the test picture hard against the right edge of
+		// a 16:9 screen (1365 of these units wide), which leaves the column beside the items room for a line
+		// that says something
+		testImage.SetRect( 837, 225, 460, 431 );
+		SetStatusWidth( 837 - UI_STATUS_COLUMN - 24 );
+
+		height = UI_CONTENT_TOP;
+		gammaIntensity.SetCoord( UI_ITEM_COLUMN, height );
+		height += UI_ROW_NAMED;
+		brightness.SetCoord( UI_ITEM_COLUMN, height );
+		height += UI_ROW_NAMED + UI_GROUP_STEP;
+		gammaIntensity.size.w = brightness.size.w = UI_ITEM_WIDTH;
+		done.SetCoord( UI_ITEM_COLUMN, height );
+		bSaveOnBack = true;
+
+		AddItem( banner );
+		AddItem( gammaIntensity );
+		AddItem( brightness );
+		AddItem( done );
+		AddItem( testImage );
+
+		gammaIntensity.LinkCvar( "gamma" );
+		brightness.LinkCvar( "brightness" );
+		return;
+	}
+
 	AddItem( banner );
 	AddItem( done );
 #if LEGACY_VIEWSIZE
@@ -308,6 +341,13 @@ void CMenuVidOptions::_VidInit()
 
 void CMenuVidOptions::Reload()
 {
+	// the gamepad UI's page carries none of the renderer switches, and nothing here may touch their cvars
+	if( uiStatic.gamepadUI )
+	{
+		CMenuFramework::Reload();
+		return;
+	}
+
 	bool gl_active = !strnicmp( EngFuncs::GetCvarString( "r_refdll_loaded" ), "gl", 2 );
 	bool soft_active = !stricmp( EngFuncs::GetCvarString( "r_refdll_loaded" ), "soft" );
 

@@ -55,6 +55,21 @@ void CMenuOptions::_Init( void )
 	msgBox.Link( this );
 
 	AddItem( banner );
+
+	if( uiStatic.gamepadUI )
+	{
+		// a pad, sound and picture: the pages a pad player has a use for
+		AddButton( L( "Controller" ), L( "Change controller settings" ),
+			PC_CONTROLS, UI_Controller_Menu, QMF_NOTIFY );
+		AddButton( L( "GameUI_Audio" ), L( "Change sound volume and quality" ),
+			PC_AUDIO, UI_Audio_Menu, QMF_NOTIFY );
+		AddButton( L( "GameUI_Video" ), L( "Change gamma and brightness" ),
+			PC_VIDEO, UI_VidOptions_Menu, QMF_NOTIFY );
+		AddButton( L( "Done" ), L( "Go back to the Main menu" ),
+			PC_DONE, VoidCb( &CMenuOptions::Hide ), QMF_NOTIFY );
+		return;
+	}
+
 	AddButton( L( "Controls" ), L( "Change keyboard and mouse settings" ),
 		PC_CONTROLS, UI_Controls_Menu, QMF_NOTIFY );
 	AddButton( L( "GameUI_Audio" ), L( "Change sound volume and quality" ),

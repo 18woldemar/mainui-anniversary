@@ -22,6 +22,7 @@ GNU General Public License for more details.
 CMenuBaseWindow::CMenuBaseWindow( const char *name, CWindowStack *pStack ) : BaseClass()
 {
 	bAllowDrag = false; // UNDONE
+	bSaveOnBack = false;
 	m_bHolding = false;
 	szName = name;
 	m_pStack = pStack;
@@ -34,30 +35,35 @@ void CMenuBaseWindow::Show()
 	VidInit();
 	Reload(); // take a chance to reload info for items
 	m_pStack->Add( this );
-	m_iCursor = 0;
 
-	// Probably not a best way
-	// but we need to inform new window about cursor position,
-	// otherwise we will have an invalid cursor until first mouse move event
-#if 1
-	m_iCursorPrev = -1;
-	MouseMove( uiStatic.cursorX, uiStatic.cursorY );
-#else
-	m_iCursor = 0;
-	m_iCursorPrev = 0;
-	// force first available item to have focus
-	FOR_EACH_VEC( m_pItems, i )
+	if( uiStatic.gamepadUI )
 	{
-		item = m_pItems[i];
+		// no mouse: the first item the pad can use takes the focus
+		m_iCursor = m_iCursorPrev = -1;
+		FOR_EACH_VEC( m_pItems, i )
+		{
+			const CMenuBaseItem *item = m_pItems[i];
 
-		if( !item->IsVisible() || item->iFlags & (QMF_GRAYED|QMF_INACTIVE|QMF_MOUSEONLY))
-			continue;
+			if( item->IsVisible() && !FBitSet( item->iFlags, QMF_GRAYED|QMF_INACTIVE|QMF_MOUSEONLY ))
+			{
+				SetCursor( i );
+				break;
+			}
+		}
 
-		m_iCursorPrev = -1;
-		SetCursor( i );
-		break;
+		if( m_iCursor < 0 )
+			m_iCursor = 0; // a page with nothing to focus still needs a cursor the drawing can use
 	}
-#endif
+	else
+	{
+		m_iCursor = 0;
+
+		// Probably not a best way
+		// but we need to inform new window about cursor position,
+		// otherwise we will have an invalid cursor until first mouse move event
+		m_iCursorPrev = -1;
+		MouseMove( uiStatic.cursorX, uiStatic.cursorY );
+	}
 	EnableTransition( ANIM_OPENING );
 }
 
@@ -97,6 +103,11 @@ bool CMenuBaseWindow::KeyDown( int key )
 
 	if( UI::Key::IsEscape( key ) )
 	{
+		if( bSaveOnBack && uiStatic.gamepadUI )
+		{
+			SaveAndPopMenu();
+			return true;
+		}
 		Hide( );
 		return true;
 	}

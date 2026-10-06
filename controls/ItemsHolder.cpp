@@ -169,6 +169,12 @@ bool CMenuItemsHolder::Key( const int key, const bool down )
 	if( UI::Key::IsNavigationKey( key ))
 	{
 		int direction;
+
+		// gamepad UI: left and right change values (sliders, checkboxes); they move between items only in
+		// dialogs
+		if( uiStatic.gamepadUI && ( UI::Key::IsLeftArrow( key ) || UI::Key::IsRightArrow( key )) && !FBitSet( iFlags, QMF_DIALOG ))
+			return handled;
+
 		cursorPrev = m_iCursorPrev = m_iCursor;
 
 		if( UI::Key::IsUpArrow( key ) || UI::Key::IsLeftArrow( key ))
@@ -374,7 +380,8 @@ wrap:
 	while( m_iCursor >= 0 && m_iCursor < m_pItems.Count() )
 	{
 		item = m_pItems[m_iCursor];
-		if( !item->IsVisible() || item->iFlags & (QMF_INACTIVE|QMF_MOUSEONLY) )
+		// greyed items do nothing, so the pad does not stop on them
+		if( !item->IsVisible() || item->iFlags & (QMF_INACTIVE|QMF_MOUSEONLY) || ( uiStatic.gamepadUI && item->iFlags & QMF_GRAYED ))
 		{
 			m_iCursor += dir;
 		}

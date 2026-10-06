@@ -18,9 +18,17 @@ GNU General Public License for more details.
 #include "Action.h"
 #include "PicButton.h"
 #include "YesNoMessageBox.h"
+#include "Framework.h"
 #include "Utils.h"
 
 static void ToggleInactiveInternalCb( CMenuBaseItem *pSelf, void *pExtra );
+
+// A one line question in a box 256 tall leaves an empty middle: the gamepad UI's box is the height of what
+// it holds, and its answers sit under the question rather than at the bottom of an empty field. Dialogs are
+// made before the menu knows which UI it is, so _VidInit puts the answers where they belong.
+static int DlgHeight( void )  { return uiStatic.gamepadUI ? 150 : 256; }
+static int DlgTextHeight( void ) { return uiStatic.gamepadUI ? 72 : 256 - 24; }
+static int DlgButtonY( void ) { return uiStatic.gamepadUI ? 96 : 204; }
 
 CMenuYesNoMessageBox::CMenuYesNoMessageBox( bool alert ) : BaseClass( "YesNoMessageBox")
 {
@@ -30,18 +38,18 @@ CMenuYesNoMessageBox::CMenuYesNoMessageBox( bool alert ) : BaseClass( "YesNoMess
 
 	dlgMessage1.iFlags = QMF_INACTIVE|QMF_DROPSHADOW;
 	dlgMessage1.eTextAlignment = QM_TOP;
-	dlgMessage1.SetRect( 0, 24, 640, 256 - 24 );
+	dlgMessage1.SetRect( 0, 24, 640, DlgTextHeight() );
 	dlgMessage1.SetCharSize( QM_DEFAULTFONT );
 
 	if( m_bIsAlert )
 	{
-		yes.SetRect( 298, 204, UI_BUTTONS_WIDTH / 2, UI_BUTTONS_HEIGHT );
+		yes.SetRect( 298, DlgButtonY(), UI_BUTTONS_WIDTH / 2, UI_BUTTONS_HEIGHT );
 	}
 	else
 	{
-		yes.SetRect( 188, 204, UI_BUTTONS_WIDTH / 2, UI_BUTTONS_HEIGHT );
+		yes.SetRect( 188, DlgButtonY(), UI_BUTTONS_WIDTH / 2, UI_BUTTONS_HEIGHT );
 	}
-	no.SetRect( 338, 204, UI_BUTTONS_WIDTH / 2, UI_BUTTONS_HEIGHT );
+	no.SetRect( 338, DlgButtonY(), UI_BUTTONS_WIDTH / 2, UI_BUTTONS_HEIGHT );
 
 	yes.onReleased.pExtra = no.onReleased.pExtra = this;
 	yes.bEnableTransitions = no.bEnableTransitions = false;
@@ -76,7 +84,7 @@ CMenuYesNoMessageBox::Init
 */
 void CMenuYesNoMessageBox::_Init()
 {
-	SetRect( DLG_X + 192, 256, 640, 256 );
+	SetRect( DLG_X + 192, 384 - DlgHeight() / 2, 640, DlgHeight() );
 
 	if( !m_bSetYes )
 		SetPositiveButton( L( "GameUI_OK" ), PC_OK );
@@ -105,11 +113,28 @@ CMenuYesNoMessageBox::VidInit
 */
 void CMenuYesNoMessageBox::_VidInit()
 {
-	SetRect( DLG_X + 192, 256, 640, 256 );
+	SetRect( DLG_X + 192, 384 - DlgHeight() / 2, 640, DlgHeight() );
 	pos.x += uiStatic.xOffset;
 	pos.y += uiStatic.yOffset;
+	dlgMessage1.size.h = DlgTextHeight();
+	yes.pos.y = no.pos.y = DlgButtonY();
 	CalcPosition();
 	CalcSizes();
+}
+
+/*
+==============
+CMenuYesNoMessageBox::Show
+
+In the gamepad UI a question starts on its safe answer (Cancel), as console dialogs do; an alert has only OK.
+==============
+*/
+void CMenuYesNoMessageBox::Show()
+{
+	BaseClass::Show();
+
+	if( uiStatic.gamepadUI && !m_bIsAlert )
+		SetCursorToItem( no );
 }
 
 /*
@@ -125,6 +150,10 @@ void CMenuYesNoMessageBox::Draw()
 	UI_DrawRectangle( m_scPos, m_scSize, uiInputFgColor );
 
 	CMenuBaseWindow::Draw();
+
+	// the page under the box does not draw its own legend while the box is up: these are its buttons
+	if( uiStatic.gamepadUI )
+		UI_DrawLegend( yes.szName, NULL, m_bIsAlert ? NULL : no.szName );
 }
 
 /*
@@ -165,7 +194,7 @@ void CMenuYesNoMessageBox::SetPositiveButton( const char *msg, EDefaultBtns butt
 	m_bSetYes = true;
 	yes.szName = msg;
 	yes.SetPicture( buttonPic );
-	yes.SetRect(  (m_bIsAlert?298:188) - extrawidth / 2, 204, UI_BUTTONS_WIDTH / 2 + extrawidth, UI_BUTTONS_HEIGHT );
+	yes.SetRect(  (m_bIsAlert?298:188) - extrawidth / 2, DlgButtonY(), UI_BUTTONS_WIDTH / 2 + extrawidth, UI_BUTTONS_HEIGHT );
 }
 
 /*
@@ -178,7 +207,7 @@ void CMenuYesNoMessageBox::SetNegativeButton( const char *msg, EDefaultBtns butt
 	m_bSetNo = true;
 	no.szName = msg;
 	no.SetPicture( buttonPic );
-	no.SetRect( 338 + extrawidth / 2, 204, UI_BUTTONS_WIDTH / 2 + extrawidth, UI_BUTTONS_HEIGHT );
+	no.SetRect( 338 + extrawidth / 2, DlgButtonY(), UI_BUTTONS_WIDTH / 2 + extrawidth, UI_BUTTONS_HEIGHT );
 }
 
 /*
@@ -230,7 +259,7 @@ void UI_ShowMessageBox( const char *text )
 	static char msg[1024];
 	static CMenuYesNoMessageBox msgBox( true );
 
-	Q_strncpy( msg, text, sizeof( msg ));
+	Q_strncpy( msg, L( text ), sizeof( msg ));	// the engine's own messages have translations too
 
 	if( !UI_IsVisible() )
 	{
@@ -238,7 +267,8 @@ void UI_ShowMessageBox( const char *text )
 		UI_SetActiveMenu( true );
 	}
 
-	if( strstr( msg, "m_ignore") || strstr( msg, "touch_enable" ) || strstr( msg, "joy_enable" ) )
+	// the gamepad UI has no input devices page to send anyone to
+	if( !uiStatic.gamepadUI && ( strstr( msg, "m_ignore") || strstr( msg, "touch_enable" ) || strstr( msg, "joy_enable" )))
 	{
 		static CMenuYesNoMessageBox msgBoxInputDev( false );
 		static bool init;
