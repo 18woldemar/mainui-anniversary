@@ -50,6 +50,8 @@ private:
 	CMenuCheckBox useAlphaDSP;
 	CMenuCheckBox muteFocusLost;
 	CMenuCheckBox vibrationEnable;
+	CMenuCheckBox subtitles;
+	CMenuSlider   subtitleScale;
 
 	float oldVibrate;
 };
@@ -70,6 +72,8 @@ void CMenuAudio::GetConfig( void )
 	useAlphaDSP.LinkCvar( "dsp_coeff_table" );
 	muteFocusLost.LinkCvar( "snd_mute_losefocus" );
 	vibrationEnable.LinkCvar( "vibration_enable" );
+	subtitles.LinkCvar( "cl_subtitles" );
+	subtitleScale.LinkCvar( "cl_subtitles_scale" );
 
 	if( !vibrationEnable.bChecked )
 		vibration.SetGrayed( true );
@@ -104,6 +108,13 @@ void CMenuAudio::SaveAndPopMenu()
 	useAlphaDSP.WriteCvar();
 	muteFocusLost.WriteCvar();
 	vibrationEnable.WriteCvar();
+
+	// a control that was never shown must not write its cvar on the way out
+	if( EngFuncs::FileExists( "subtitles.txt" ))
+	{
+		subtitles.WriteCvar();
+		subtitleScale.WriteCvar();
+	}
 
 	CMenuFramework::SaveAndPopMenu();
 }
@@ -159,6 +170,17 @@ void CMenuAudio::_Init( void )
 	vibration.onChanged = VoidCb( &CMenuAudio::VibrateChanged );
 	vibration.SetCoord( 700, 560 );
 
+	// only a language with caption text mounts a subtitles.txt, and only then is there a switch
+	subtitles.szName = L( "Subtitles" );
+	subtitles.onChanged = CMenuEditable::WriteCvarCb;
+	subtitles.SetCoord( 320, 610 ); // the checkbox column of this page is 50 px apart, and 560 is taken
+
+	subtitleScale.szName = L( "Subtitle size" );
+	subtitleScale.Setup( 1.0f, 3.0f, 0.25f );
+	subtitleScale.onChanged = CMenuEditable::WriteCvarCb;
+	subtitleScale.SetCoord( 700, 620 ); // the sliders of this page are 60 apart
+	subtitleScale.size.w = 300;
+
 	AddItem( banner );
 	AddButton( L( "Done" ), nullptr, PC_DONE, VoidCb( &CMenuAudio::SaveAndPopMenu ));
 	AddItem( soundVolume );
@@ -169,6 +191,11 @@ void CMenuAudio::_Init( void )
 	AddItem( muteFocusLost );
 	AddItem( vibrationEnable );
 	AddItem( vibration );
+	if( EngFuncs::FileExists( "subtitles.txt" ))
+	{
+		AddItem( subtitles );
+		AddItem( subtitleScale );
+	}
 }
 
 void CMenuAudio::_VidInit( )
