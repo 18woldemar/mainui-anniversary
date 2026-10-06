@@ -413,7 +413,7 @@ void CMenuLoadGame::_Init( void )
 		hint.iFlags = QMF_INACTIVE;
 		hint.colorBase = uiColorHelp;
 		hint.SetCharSize( QM_SMALLFONT );
-		hint.szName = L( "Hold BACK in a game\nto quicksave" );
+		hint.szName = L( "Hold START in a game\nto quicksave" );
 		hint.SetCoord( 72, LEVELSHOT_Y_PAD + LEVELSHOT_H + 24 );
 
 		// the picture starts where the list starts, instead of floating halfway down beside it
