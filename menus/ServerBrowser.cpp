@@ -380,6 +380,8 @@ public:
 	void Show() override;
 	void Hide() override;
 	bool KeyUp( int key ) override;
+	bool KeyDown( int key ) override;
+	void NextTab( int dir );
 
 	void SetLANOnly( bool lanOnly )
 	{
@@ -1135,6 +1137,51 @@ void CMenuServerBrowser::Draw( void )
 	}
 }
 
+/*
+=================
+CMenuServerBrowser::KeyDown
+
+The gamepad UI drives the list itself: A joins (the table's own activation), X refreshes, the bumpers step
+through the tabs of the internet list.
+=================
+*/
+bool CMenuServerBrowser::KeyDown( int key )
+{
+	if( uiStatic.gamepadUI && m_pStack->Current() == this )
+	{
+		switch( key )
+		{
+		case K_X_BUTTON:
+			RefreshList();
+			return true;
+		case K_L1_BUTTON:
+			NextTab( -1 );
+			return true;
+		case K_R1_BUTTON:
+			NextTab( 1 );
+			return true;
+		}
+	}
+
+	return CMenuFramework::KeyDown( key );
+}
+
+void CMenuServerBrowser::NextTab( int dir )
+{
+	static const int tabs[] = { 0, 2, 3 }; // Direct, Favorites, History: NAT (1) is hidden
+	int i;
+
+	if( m_bLanOnly )
+		return;
+
+	for( i = 0; i < V_ARRAYSIZE( tabs ) && tabs[i] != tabSwitch.GetState(); i++ );
+
+	i = ( i + dir + V_ARRAYSIZE( tabs )) % V_ARRAYSIZE( tabs );
+	tabSwitch.SetState( tabs[i] );
+	OnTabSwitch();
+	PlayLocalSound( uiStatic.sounds[SND_MOVE] );
+}
+
 bool CMenuServerBrowser::KeyUp( int key )
 {
 	if( key == 'i' )
@@ -1364,6 +1411,24 @@ void CMenuServerBrowser::_Init( void )
 		parent->RefreshList();
 	});
 
+	if( uiStatic.gamepadUI )
+	{
+		// the pad drives the table and the legend names its buttons, so the button column goes and the list
+		// takes the width up to the safe margin; the bumpers turn the tabs, so the pad never stops on them
+		for( int i = 0; i < m_iBtnsNum; i++ )
+			m_apBtns[i]->SetVisibility( false );
+
+		tabSwitch.SetRect( 72, 230, -68, 32 );
+		tabSwitch.iFlags |= QMF_INACTIVE;
+		gameList.SetSize( -68, 400 );
+		legendA = "Join game";
+		legendX = "Refresh";
+
+		AddItem( gameList );
+		AddItem( tabSwitch );
+		return;
+	}
+
 	AddItem( gameList );
 	AddItem( tabSwitch );
 
@@ -1384,13 +1449,15 @@ void CMenuServerBrowser::_VidInit()
 	refreshTime = uiStatic.realTime + 500; // delay before update 0.5 sec
 	refreshTime2 = uiStatic.realTime + 500;
 
+	const int listX = uiStatic.gamepadUI ? 72 : 360;
+
 	if( m_bLanOnly )
 	{
-		gameList.SetCoord( 360, 230 );
+		gameList.SetCoord( listX, 230 );
 	}
 	else
 	{
-		gameList.SetCoord( 360, 230 + tabSwitch.size.h + uiStatic.outlineWidth );
+		gameList.SetCoord( listX, 230 + tabSwitch.size.h + uiStatic.outlineWidth );
 	}
 
 	int x = gameList.pos.x;
@@ -1443,8 +1510,11 @@ void CMenuServerBrowser::Show()
 	else
 	{
 		banner.SetPicture( ART_BANNER_INET );
-		favorite->Show();
-		addServer->Show();
+		if( !uiStatic.gamepadUI ) // the gamepad UI has no button column
+		{
+			favorite->Show();
+			addServer->Show();
+		}
 		tabSwitch.Show();
 		filterProtocol.Show();
 		gameListModel.filterProtocol = filterProtocol.GetItem( );

@@ -60,6 +60,23 @@ void CMenuMultiplayer::_Init( void )
 	banner.SetPicture( ART_BANNER );
 	AddItem( banner );
 
+	if( uiStatic.gamepadUI )
+	{
+		// a pad's own pages: the server lists, a server of one's own, and the player; the controls live on
+		// the Configuration page
+		AddButton( L( "Internet game" ), L( "View list of a game internet servers and join the one of your choice" ), PC_INET_GAME, UI_InternetGames_Menu, QMF_NOTIFY );
+		AddButton( L( "LAN game" ), L( "Set up the game on the local area network" ), PC_LAN_GAME, UI_LanGame_Menu, QMF_NOTIFY );
+		CMenuPicButton *create = AddButton( L( "GameUI_GameMenu_CreateServer" ), L( "Start a server of your own" ), PC_CREATE_GAME, UI_CreateGame_Menu, QMF_NOTIFY );
+		SET_EVENT_MULTI( create->onReleased,
+		{
+			EngFuncs::CvarSetValue( "public", 1.0f );
+			UI_CreateGame_Menu();
+		});
+		AddButton( L( "GameUI_GameMenu_Customize" ), L( "Choose your player name, and select visual options for your character" ), PC_CUSTOMIZE, UI_PlayerSetup_Menu, QMF_NOTIFY );
+		AddButton( L( "Done" ), L( "Go back to the Main menu" ), PC_DONE, VoidCb( &CMenuMultiplayer::Hide ), QMF_NOTIFY );
+		return;
+	}
+
 	AddButton( L( "Internet game" ), L( "View list of a game internet servers and join the one of your choice" ), PC_INET_GAME, UI_InternetGames_Menu, QMF_NOTIFY );
 	// AddButton( L( "Spectate game" ), L( "Spectate internet games" ), PC_SPECTATE_GAMES, NoopCb, QMF_GRAYED | QMF_NOTIFY );
 	AddButton( L( "LAN game" ), L( "Set up the game on the local area network" ), PC_LAN_GAME, UI_LanGame_Menu, QMF_NOTIFY );

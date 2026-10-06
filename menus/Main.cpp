@@ -332,6 +332,7 @@ void CMenuMain::_Init( void )
 			AddItem( hazardCourse );
 
 		AddItem( configuration );
+		AddItem( multiPlayer );
 
 		if ( bCustomGame )
 			AddItem( customGame );
@@ -454,7 +455,7 @@ void CMenuMain::VidInit( bool connected )
 =================
 CMenuMain::GamepadLayout
 
-The gamepad UI's column, bottom up in the order of _Init; it closes up where Previews and Multiplayer were.
+The gamepad UI's column, bottom up in the order of _Init; it closes up where Previews was.
 =================
 */
 void CMenuMain::GamepadLayout( bool connected, int hoffset, int yoffset, int ygap )
@@ -466,6 +467,9 @@ void CMenuMain::GamepadLayout( bool connected, int hoffset, int yoffset, int yga
 		customGame.SetCoord( hoffset, yoffset );
 		yoffset -= ygap;
 	}
+
+	multiPlayer.SetCoord( hoffset, yoffset );
+	yoffset -= ygap;
 
 	configuration.SetCoord( hoffset, yoffset );
 	yoffset -= ygap;
