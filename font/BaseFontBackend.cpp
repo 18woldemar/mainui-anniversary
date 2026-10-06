@@ -556,7 +556,7 @@ int CBaseFont::DrawCharacter(int ch, Point pt, int charH, const unsigned int col
 	(('T'<<24)+('F'<<16)+('I'<<8)+'U') // little-endian "UIFT"
 
 // Version 3. WinAPI font rendering behavior changed, force font regeneration
-#define CACHED_FONT_VERSION 3
+#define CACHED_FONT_VERSION 4 // 4: glyph texels written as bytes, not packed in host order
 
 struct char_data_t
 {
@@ -585,7 +585,12 @@ bool CBaseFont::ReadFromCache( const char *filename, charRange_t *range, size_t 
 	V_snprintf( path, sizeof( path ), ".fontcache/%s", filename[0] == '#' ? filename + 1 : filename );
 
 	if( !EngFuncs::FileExists( path ))
+	{
+		// the line the font manager prints next says how long the font took either way, so say here
+		// which way it went: a cache that is never found is a second of every start, silently
+		Con_DPrintf( "font cache: %s is missing, rendering the font\n", path );
 		return false;
+	}
 
 	data = EngFuncs::COM_LoadFile( path, &size );
 
@@ -604,7 +609,7 @@ bool CBaseFont::ReadFromCache( const char *filename, charRange_t *range, size_t 
 	{
 		Con_Printf( "Font cache file is too short\n" );
 		EngFuncs::COM_FreeFile( data );
-		EngFuncs::DeleteFile( filename );
+		EngFuncs::DeleteFile( path );
 		return false;
 	}
 
@@ -612,7 +617,7 @@ bool CBaseFont::ReadFromCache( const char *filename, charRange_t *range, size_t 
 	{
 		Con_Printf( "Wrong font cache file format\n" );
 		EngFuncs::COM_FreeFile( data );
-		EngFuncs::DeleteFile( filename );
+		EngFuncs::DeleteFile( path );
 		return false;
 	}
 
@@ -620,7 +625,7 @@ bool CBaseFont::ReadFromCache( const char *filename, charRange_t *range, size_t 
 	{
 		Con_Printf( "Wrong font cache file version. Expected %d, got %d\n", CACHED_FONT_VERSION, hdr->version );
 		EngFuncs::COM_FreeFile( data );
-		EngFuncs::DeleteFile( filename );
+		EngFuncs::DeleteFile( path );
 		return false;
 	}
 
@@ -628,7 +633,7 @@ bool CBaseFont::ReadFromCache( const char *filename, charRange_t *range, size_t 
 	{
 		Con_Printf( "Font cache file has different character set. Expected %d characters in set, got %d\n", charsCount, hdr->charsCount );
 		EngFuncs::COM_FreeFile( data );
-		EngFuncs::DeleteFile( filename );
+		EngFuncs::DeleteFile( path );
 		return false;
 	}
 
@@ -636,7 +641,7 @@ bool CBaseFont::ReadFromCache( const char *filename, charRange_t *range, size_t 
 	{
 		Con_Printf( "Font cache file is too short (2nd check)\n" );
 		EngFuncs::COM_FreeFile( data );
-		EngFuncs::DeleteFile( filename );
+		EngFuncs::DeleteFile( path );
 		return false;
 	}
 
@@ -646,7 +651,7 @@ bool CBaseFont::ReadFromCache( const char *filename, charRange_t *range, size_t 
 	{
 		Con_Printf( "Font cache BMP file id check failed\n" );
 		EngFuncs::COM_FreeFile( data );
-		EngFuncs::DeleteFile( filename );
+		EngFuncs::DeleteFile( path );
 		return false;
 	}
 
@@ -654,7 +659,7 @@ bool CBaseFont::ReadFromCache( const char *filename, charRange_t *range, size_t 
 	{
 		Con_Printf( "Font cache file is too short or too long (3rd check)\n" );
 		EngFuncs::COM_FreeFile( data );
-		EngFuncs::DeleteFile( filename );
+		EngFuncs::DeleteFile( path );
 		return false;
 	}
 
@@ -666,7 +671,7 @@ bool CBaseFont::ReadFromCache( const char *filename, charRange_t *range, size_t 
 	{
 		Con_Printf( "Failed to load font cache BMP\n" );
 		EngFuncs::COM_FreeFile( data );
-		EngFuncs::DeleteFile( filename );
+		EngFuncs::DeleteFile( path );
 		return false;
 	}
 
@@ -683,7 +688,7 @@ bool CBaseFont::ReadFromCache( const char *filename, charRange_t *range, size_t 
 				Con_Printf( "Font cache file has different character set. Expected %d, got %d", range[i].Character( j ), ch->ch );
 				EngFuncs::COM_FreeFile( data );
 				EngFuncs::PIC_Free( filename );
-				EngFuncs::DeleteFile( filename );
+				EngFuncs::DeleteFile( path );
 				return false;
 			}
 
@@ -772,7 +777,8 @@ void CBaseFont::SaveToCache( const char *filename, charRange_t *range, size_t ra
 	if( buf_p + bmpSize - data != size )
 		Host_Error( "%s: %i: buf_p + bmpSize - data != size", __FILE__, __LINE__ );
 
-	V_snprintf( path, sizeof( path ), ".fontcache/%s", filename );
+	// the same name the read side builds: the engine's leading '#' is not part of it
+	V_snprintf( path, sizeof( path ), ".fontcache/%s", filename[0] == '#' ? filename + 1 : filename );
 	EngFuncs::COM_SaveFile( path, data, size );
 
 	delete[] data;

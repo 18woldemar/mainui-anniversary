@@ -130,13 +130,21 @@ void CMenuNewGame::_Init( void )
 	norm->onReleasedClActive.pExtra = &normCallback;
 	hard->onReleasedClActive.pExtra = &hardCallback;
 
-	AddButton( L( "GameUI_Cancel" ), L( "Go back to the Main menu" ), PC_CANCEL, VoidCb( &CMenuNewGame::Hide ), QMF_NOTIFY );
-
+	// the switch belongs to the three difficulties above it - which game is started - and not after the
+	// Cancel that leaves the page, so it goes between them and Cancel
 	startDemoChapter.SetCoord( 72, 230 + m_iBtnsNum * 50 );
 	startDemoChapter.SetNameAndStatus( L( "GameUI_PlayGame_Alt" ), L( "Play the demo chapter on selected difficulty" ));
 
-	if( EngFuncs::IsMapValid( gMenu.m_gameinfo.demomap ))
+	const bool demo = EngFuncs::IsMapValid( gMenu.m_gameinfo.demomap ) ? true : false;
+
+	if( demo )
 		AddItem( startDemoChapter );
+
+	CMenuPicButton *cancel = AddButton( L( "GameUI_Cancel" ), L( "Go back to the Main menu" ), PC_CANCEL,
+		VoidCb( &CMenuNewGame::Hide ), QMF_NOTIFY );
+
+	if( demo ) // under the switch, with the room its row took
+		cancel->SetCoord( 72, 230 + m_iBtnsNum * 50 + 12 );
 
 	msgBox.SetMessage( L( "StringsList_240" ) );
 	msgBox.HighlightChoice( CMenuYesNoMessageBox::HIGHLIGHT_NO );

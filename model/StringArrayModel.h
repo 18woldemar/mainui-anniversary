@@ -27,7 +27,7 @@ public:
 
 	const char *GetText( int line ) final override
 	{
-		if( line < 0 || line > m_iCount )
+		if( line < 0 || line >= m_iCount )
 		{
 			Con_Printf("StringArrayModel: wrong index %d of %d\n", line, m_iCount );
 			return "";

@@ -185,8 +185,11 @@ void CMenuCredits::_Init( void )
 			p = buffer;
 
 			// convert customs credits to 'ideal' strings array
-			for ( numLines = 0; numLines < UI_CREDITS_MAXLINES; numLines++ )
+			// one slot short of the array: the last one belongs to the terminator below
+			for ( numLines = 0; numLines < UI_CREDITS_MAXLINES - 1; )
 			{
+				char *line = p;
+
 				index[numLines] = p;
 				while ( *p != '\r' && *p != '\n' )
 				{
@@ -195,17 +198,38 @@ void CMenuCredits::_Init( void )
 						break;
 				}
 
+				qboolean last = false;
+
 				if ( *p == '\r' )
 				{
 					*p++ = 0;
-					if( --count == 0 ) break;
+					if( --count == 0 ) last = true;
 				}
 
-				*p++ = 0;
-				if( --count == 0 ) break;
+				if( !last )
+				{
+					*p++ = 0;
+					if( --count == 0 ) last = true;
+				}
+
+				// Valve's own credits.txt opens with three commented lines, and every text format of
+				// theirs reads "//" as one: the roll is the names, not the file
+				while( *line == ' ' || *line == '\t' )
+					line++;
+				if( line[0] != '/' || line[1] != '/' )
+					numLines++;
+
+				if( last ) break;
 			}
-			index[++numLines] = 0;
+			index[numLines] = NULL; // numLines is the number of lines kept, so this terminates them
 			credits = (const char **)index;
+
+			if( !numLines )
+			{
+				// a file of nothing but comments: Reload() measures credits[numLines - 1]
+				credits = uiCreditsDefault;
+				numLines = ( sizeof( uiCreditsDefault ) / sizeof( uiCreditsDefault[0] )) - 1;
+			}
 		}
 		else
 		{

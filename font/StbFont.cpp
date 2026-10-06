@@ -138,19 +138,13 @@ void CStbFont::GetCharRGBA(int ch, Point pt, Size sz, unsigned char *rgba, Size 
 	// iterate through copying the generated dib into the texture
 	for (int j = ystart; j < yend; j++, dst += 4 * sz.w, buf += bm_width )
 	{
-		unsigned int *xdst = (unsigned int*)(dst + 4 * ( m_iBlur + m_iOutlineSize ));
-		for (int i = xstart; i < xend; i++, xdst++)
+		// a 32-bit BMP texel is blue, green, red, alpha on any byte order
+		byte *xdst = dst + 4 * ( m_iBlur + m_iOutlineSize );
+		for (int i = xstart; i < xend; i++, xdst += 4)
 		{
-			if( buf[i] > 0 )
-			{
-				// paint white and alpha
-				*xdst = PackRGBA( 0xFF, 0xFF, 0xFF, buf[i] );
-			}
-			else
-			{
-				// paint black and null alpha
-				*xdst = 0;
-			}
+			// paint white and alpha, or black and null alpha
+			xdst[0] = xdst[1] = xdst[2] = buf[i] > 0 ? 0xFF : 0;
+			xdst[3] = buf[i];
 		}
 	}
 

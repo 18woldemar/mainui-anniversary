@@ -518,7 +518,9 @@ HFont CFontBuilder::Create()
 
 	double endtime = EngFuncs::DoubleTime();
 
-	Con_DPrintf( "Rendering %s(%i, %i) took %f seconds\n", font->GetName(), m_iTall, m_iWeight, endtime - starttime );
+	// this counts a font read from the cache as well as one rendered from the face; "font cache:" above
+	// says which happened
+	Con_DPrintf( "Font %s(%i, %i) ready in %f seconds\n", font->GetName(), m_iTall, m_iWeight, endtime - starttime );
 
 	if( m_hForceHandle != -1 && g_FontMgr->m_Fonts.Count() != m_hForceHandle )
 	{
