@@ -152,9 +152,21 @@ bool CMenuField::KeyDown( int key )
 		const bool open = !uiStatic.textInput;
 
 		if( open )
+		{
 			EngFuncs::SetTextInputRect( m_scPos.x, m_scPos.y, m_scSize.w, m_scSize.h );
+			EngFuncs::SetTextInputBuffer( szBuffer );
+		}
 		UI_EnableTextInput( open );
 		PlayLocalSound( uiStatic.sounds[SND_KEY] );
+		return true;
+	}
+
+	// gamepad has no keys to type, ask the engine for the system keyboard with the text of this field
+	if( key == K_A_BUTTON )
+	{
+		EngFuncs::SetTextInputRect( m_scPos.x, m_scPos.y, m_scSize.w, m_scSize.h );
+		EngFuncs::SetTextInputBuffer( szBuffer );
+		UI_EnableTextInput( true );
 		return true;
 	}
 
@@ -300,6 +312,9 @@ void CMenuField::Char( int key )
 	{
 		// ctrl-c clears the field
 		Clear( );
+		SetCvarString( szBuffer );
+		_Event( QM_CHANGED );
+		return;
 	}
 
 	len = strlen( szBuffer );
@@ -549,6 +564,10 @@ void CMenuField::UpdateEditable()
 	if( szValue )
 	{
 		Q_strncpy( szBuffer, szValue, iMaxLength + 1 );
+
+		// the text was replaced, put the cursor at its end like SetBuffer does
+		iCursor = strlen( szBuffer );
+		iScroll = g_FontMgr->CutText( font, szBuffer, m_scChSize, iRealWidth, true );
 	}
 }
 
