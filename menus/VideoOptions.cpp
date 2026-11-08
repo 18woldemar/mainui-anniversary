@@ -307,8 +307,9 @@ void CMenuVidOptions::_Init( void )
 		// gamma and brightness in the column every page uses, the test picture hard against the right edge of
 		// a 16:9 screen (1365 of these units wide), which leaves the column beside the items room for a line
 		// that says something
-		testImage.SetRect( 837, 225, 460, 431 );
-		SetStatusWidth( 837 - UI_STATUS_COLUMN - 24 );
+		const int testX = Q_min( 837, uiStatic.width - 460 - 68 ); // a screen narrower than 16:9 moves it in
+		testImage.SetRect( testX, 225, 460, 431 );
+		SetStatusWidth( testX - UI_STATUS_COLUMN - 24 );
 
 		height = UI_CONTENT_TOP;
 		if( gl3Active )

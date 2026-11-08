@@ -55,7 +55,12 @@ void CMenuController::_Init()
 	// The settings in the column every page uses, the drawing beside them at the size it was drawn for: its
 	// labels and leader lines go out on both sides of the pad, and a 16:9 screen is 1365 of these units wide,
 	// so both fit side by side. Its first labels stand level with the first setting.
-	layout.SetRect( 385, 245, 912, 331 );
+	{
+		// a screen narrower than 16:9 (the Deck is 1280 units wide, 4:3 is 1024) takes the picture smaller
+		const int w = Q_min( 912, uiStatic.width - 385 - 16 );
+
+		layout.SetRect( 385, 245, w, 331 * w / 912 );
+	}
 
 	int y = UI_CONTENT_TOP;
 
