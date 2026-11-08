@@ -23,6 +23,8 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "PicButton.h"
 #include "Slider.h"
 #include "CheckBox.h"
+#include "SpinControl.h"
+#include "StringArrayModel.h"
 #include "YesNoMessageBox.h"
 
 #define ART_BANNER	  	"gfx/shell/head_vidoptions"
@@ -51,6 +53,8 @@ public:
 	} testImage;
 
 	CMenuPicButton	done;
+	CMenuSpinControl	style; // ref_gl3's render style
+	bool		gl3Active;
 
 #if LEGACY_VIEWSIZE
 	CMenuSlider	screenSize;
@@ -104,11 +108,14 @@ void CMenuVidOptions::SaveAndPopMenu( void )
 	// state to save
 	if( !uiStatic.gamepadUI )
 	{
-		detailtex.WriteCvar();
-		vbo.WriteCvar();
-		swwater.WriteCvar();
-		overbright.WriteCvar();
-		filtering.WriteCvar();
+		if( !gl3Active ) // under ref_gl3 the render style owns these
+		{
+			detailtex.WriteCvar();
+			vbo.WriteCvar();
+			swwater.WriteCvar();
+			overbright.WriteCvar();
+			filtering.WriteCvar();
+		}
 		hudscale.WriteCvar();
 	}
 	// gamma and brightness is already written
@@ -176,6 +183,26 @@ void CMenuVidOptions::_Init( void )
 
 	int height = 280;
 
+	gl3Active = !stricmp( EngFuncs::GetCvarString( "r_refdll_loaded" ), "gl3" );
+
+	// the styles, by the names the player knows them under: the two the original shipped, and ours
+	static const char *styleStr[] = { L( "Original" ), L( "Software" ), L( "Enhanced" ) };
+	static CStringArrayModel styleModel( styleStr, V_ARRAYSIZE( styleStr ));
+
+	style.szName = L( "Renderer" );
+	style.Setup( &styleModel );
+	style.SetRect( 72, height, 280, 32 ); // the spin draws its name above itself
+	if( gl3Active )
+		height += 84;
+
+	const int switchStep = gl3Active ? 0 : 50; // under ref_gl3 the render style owns the first five switches
+	SET_EVENT_MULTI( style.onChanged,
+	{
+		CMenuVidOptions *parent = pSelf->GetParent( CMenuVidOptions );
+
+		parent->style.WriteCvar();
+	});
+
 #if LEGACY_VIEWSIZE
 	screenSize.szName = L( "Screen size" );
 	screenSize.SetCoord( 72, height );
@@ -207,23 +234,23 @@ void CMenuVidOptions::_Init( void )
 
 	detailtex.szName = L( "Detail textures" );
 	detailtex.SetCoord( 72, height );
-	height += 50;
+	height += switchStep;
 
 	vbo.szName = L( "Use VBO" );
 	vbo.SetCoord( 72, height );
-	height += 50;
+	height += switchStep;
 
 	swwater.szName = L( "Water ripples" );
 	swwater.SetCoord( 72, height );
-	height += 50;
+	height += switchStep;
 
 	overbright.szName = L( "Overbrights" );
 	overbright.SetCoord( 72, height );
-	height += 50;
+	height += switchStep;
 
 	filtering.szName = L( "Texture filtering" );
 	filtering.SetCoord( 72, height );
-	height += 50;
+	height += switchStep;
 
 	hudscale.szName = L( "Auto scale HUD" );
 	hudscale.SetCoord( 72, height );
@@ -284,6 +311,11 @@ void CMenuVidOptions::_Init( void )
 		SetStatusWidth( 837 - UI_STATUS_COLUMN - 24 );
 
 		height = UI_CONTENT_TOP;
+		if( gl3Active )
+		{
+			style.SetRect( UI_ITEM_COLUMN, height, UI_ITEM_WIDTH, 32 );
+			height += UI_ROW_NAMED + UI_GROUP_STEP * 2; // its box is taller than a slider's bar, and it is a group of one
+		}
 		gammaIntensity.SetCoord( UI_ITEM_COLUMN, height );
 		height += UI_ROW_NAMED;
 		brightness.SetCoord( UI_ITEM_COLUMN, height );
@@ -293,6 +325,11 @@ void CMenuVidOptions::_Init( void )
 		bSaveOnBack = true;
 
 		AddItem( banner );
+		if( gl3Active )
+		{
+			AddItem( style );
+			style.LinkCvar( "r_style", CMenuEditable::CVAR_VALUE );
+		}
 		AddItem( gammaIntensity );
 		AddItem( brightness );
 		AddItem( done );
@@ -304,17 +341,25 @@ void CMenuVidOptions::_Init( void )
 	}
 
 	AddItem( banner );
+	if( gl3Active )
+	{
+		AddItem( style );
+		style.LinkCvar( "r_style", CMenuEditable::CVAR_VALUE );
+	}
 	AddItem( done );
 #if LEGACY_VIEWSIZE
 	AddItem( screenSize );
 #endif
 	AddItem( gammaIntensity );
 	AddItem( brightness );
-	AddItem( detailtex );
-	AddItem( vbo );
-	AddItem( swwater );
-	AddItem( overbright );
-	AddItem( filtering );
+	if( !gl3Active )
+	{
+		AddItem( detailtex );
+		AddItem( vbo );
+		AddItem( swwater );
+		AddItem( overbright );
+		AddItem( filtering );
+	}
 	AddItem( hudscale );
 	AddItem( testImage );
 
@@ -343,6 +388,12 @@ void CMenuVidOptions::Reload()
 {
 	// the gamepad UI's page carries none of the renderer switches, and nothing here may touch their cvars
 	if( uiStatic.gamepadUI )
+	{
+		CMenuFramework::Reload();
+		return;
+	}
+
+	if( gl3Active )
 	{
 		CMenuFramework::Reload();
 		return;
