@@ -52,6 +52,7 @@ private:
 	CMenuCheckBox vibrationEnable;
 	CMenuCheckBox subtitles;
 	CMenuSlider   subtitleScale;
+	bool hasSubtitles; // the engine found captions for the game's language (cl_subtitles_file)
 
 	float oldVibrate;
 };
@@ -116,7 +117,7 @@ void CMenuAudio::SaveAndPopMenu()
 	}
 
 	// a control that was never shown must not write its cvar on the way out
-	if( EngFuncs::FileExists( "subtitles.txt" ))
+	if( hasSubtitles)
 	{
 		subtitles.WriteCvar();
 		subtitleScale.WriteCvar();
@@ -176,7 +177,8 @@ void CMenuAudio::_Init( void )
 	vibration.onChanged = VoidCb( &CMenuAudio::VibrateChanged );
 	vibration.SetCoord( 700, 560 );
 
-	// only a language with caption text mounts a subtitles.txt, and only then is there a switch
+	// only a language the engine found captions for gets the switch; which file that is, is the engine's call
+	hasSubtitles = EngFuncs::GetCvarString( "cl_subtitles_file" )[0] != '\0';
 	subtitles.szName = L( "Subtitles" );
 	subtitles.onChanged = CMenuEditable::WriteCvarCb;
 	subtitles.SetCoord( 320, 610 ); // the checkbox column of this page is 50 px apart, and 560 is taken
@@ -204,7 +206,7 @@ void CMenuAudio::_Init( void )
 		subtitleScale.size.w = UI_ITEM_WIDTH;
 
 		// Done goes under what it applies to. Without captions the page is three rows shorter.
-		SetButtonTop( EngFuncs::FileExists( "subtitles.txt" ) ? y : UI_CONTENT_TOP + 3 * UI_ROW_NAMED + UI_GROUP_STEP );
+		SetButtonTop( hasSubtitles ? y : UI_CONTENT_TOP + 3 * UI_ROW_NAMED + UI_GROUP_STEP );
 
 		bSaveOnBack = true;
 		musicVolume.szName = L( "Music volume" );
@@ -212,7 +214,7 @@ void CMenuAudio::_Init( void )
 		AddItem( soundVolume );
 		AddItem( musicVolume );
 		AddItem( suitVolume );
-		if( EngFuncs::FileExists( "subtitles.txt" ))
+		if( hasSubtitles)
 		{
 			AddItem( subtitles );
 			AddItem( subtitleScale );
@@ -231,7 +233,7 @@ void CMenuAudio::_Init( void )
 	AddItem( muteFocusLost );
 	AddItem( vibrationEnable );
 	AddItem( vibration );
-	if( EngFuncs::FileExists( "subtitles.txt" ))
+	if( hasSubtitles)
 	{
 		AddItem( subtitles );
 		AddItem( subtitleScale );
