@@ -382,6 +382,8 @@ public:
 	bool KeyUp( int key ) override;
 	bool KeyDown( int key ) override;
 	void NextTab( int dir );
+	void NextPadFilter();
+	int m_iPadFilter = 0;
 
 	void SetLANOnly( bool lanOnly )
 	{
@@ -1164,6 +1166,9 @@ bool CMenuServerBrowser::KeyDown( int key )
 		case K_X_BUTTON:
 			RefreshList();
 			return true;
+		case K_Y_BUTTON:
+			NextPadFilter();
+			return true;
 		case K_L1_BUTTON:
 			NextTab( -1 );
 			return true;
@@ -1174,6 +1179,35 @@ bool CMenuServerBrowser::KeyDown( int key )
 	}
 
 	return CMenuFramework::KeyDown( key );
+}
+
+// the pad has no drop-down boxes to open, so Y steps through the filters a player reaches for most. The boxes keep
+// the state, because the query to the master server reads them
+static const struct
+{
+	const char *label;
+	int empty, full; // items of filterEmpty and filterFull: 1 "not ...", 2 "any"
+} g_PadFilters[] =
+{
+	{ "Filter: any", 2, 2 },
+	{ "Filter: not empty", 1, 2 },
+	{ "Filter: not full", 2, 1 },
+	{ "Filter: playing", 1, 1 },
+};
+
+void CMenuServerBrowser::NextPadFilter()
+{
+	m_iPadFilter = ( m_iPadFilter + 1 ) % V_ARRAYSIZE( g_PadFilters );
+
+	filterEmpty.SelectItem( g_PadFilters[m_iPadFilter].empty, false );
+	filterFull.SelectItem( g_PadFilters[m_iPadFilter].full, false );
+	gameListModel.filterEmpty = filterEmpty.GetItem( );
+	gameListModel.filterFull = filterFull.GetItem( );
+	legendY = g_PadFilters[m_iPadFilter].label;
+
+	ClearList();
+	RefreshList();
+	PlayLocalSound( uiStatic.sounds[SND_MOVE] );
 }
 
 void CMenuServerBrowser::NextTab( int dir )
@@ -1433,6 +1467,7 @@ void CMenuServerBrowser::_Init( void )
 		gameList.SetSize( -68, 400 );
 		legendA = "Join game";
 		legendX = "Refresh";
+		legendY = g_PadFilters[m_iPadFilter].label;
 
 		AddItem( gameList );
 		AddItem( tabSwitch );

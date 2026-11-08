@@ -33,6 +33,7 @@ CMenuFramework::CMenuFramework( const char *name ) : BaseClass( name )
 	legendA = "Select";
 	legendB = "Back";
 	legendX = NULL;
+	legendY = NULL;
 }
 
 CMenuFramework::~CMenuFramework()
@@ -146,14 +147,14 @@ void CMenuFramework::Draw()
 UI_DrawLegend
 
 The pad buttons the page answers to, right-aligned at the bottom of the TV safe area (5% in from the
-edges): A, then X, then B at the edge, as console menus put them.
+edges): A, then X, then Y, then B at the edge, as console menus put them.
 =================
 */
-void UI_DrawLegend( const char *a, const char *x_label, const char *b )
+void UI_DrawLegend( const char *a, const char *x_label, const char *b, const char *y_label )
 {
 	// a CImage loads when it is made and keeps the handle, so these are made once and not three times a
 	// frame - but a video restart leaves the handles pointing at nothing, so they are made again then
-	static CImage icons[3] = { CImage( "gfx/shell/pad_a" ), CImage( "gfx/shell/pad_x" ), CImage( "gfx/shell/pad_b" ) };
+	static CImage icons[4] = { CImage( "gfx/shell/pad_a" ), CImage( "gfx/shell/pad_x" ), CImage( "gfx/shell/pad_y" ), CImage( "gfx/shell/pad_b" ) };
 	static int loaded = uiVidGeneration;
 
 	if( loaded != uiVidGeneration )
@@ -161,16 +162,17 @@ void UI_DrawLegend( const char *a, const char *x_label, const char *b )
 		loaded = uiVidGeneration;
 		icons[0].Load( "gfx/shell/pad_a" );
 		icons[1].Load( "gfx/shell/pad_x" );
-		icons[2].Load( "gfx/shell/pad_b" );
+		icons[2].Load( "gfx/shell/pad_y" );
+		icons[3].Load( "gfx/shell/pad_b" );
 	}
-	const char *labels[3] = { a, x_label, b };
+	const char *labels[4] = { a, x_label, y_label, b };
 	const int icon = 36 * uiStatic.scaleY;
 	const int charH = UI_SMALL_CHAR_HEIGHT * uiStatic.scaleY;
 	const int gap = 8 * uiStatic.scaleX;
 	const int y = ScreenHeight - ScreenHeight / 20 - icon;
 	int x = ScreenWidth - ScreenWidth / 20;
 
-	for( int i = 2; i >= 0; i-- )
+	for( int i = 3; i >= 0; i-- )
 	{
 		if( !labels[i] )
 			continue;
@@ -189,7 +191,7 @@ void UI_DrawLegend( const char *a, const char *x_label, const char *b )
 
 void CMenuFramework::DrawLegend()
 {
-	UI_DrawLegend( legendA, legendX, legendB );
+	UI_DrawLegend( legendA, legendX, legendB, legendY );
 }
 
 void CMenuFramework::Hide()

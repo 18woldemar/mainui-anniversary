@@ -67,6 +67,7 @@ public:
 	CMenuCheckBox	filtering;
 	CMenuCheckBox	detailtex;
 	CMenuCheckBox	hudscale;
+	CMenuCheckBox	hdmodels;
 	CMenuYesNoMessageBox	msgBox;
 
 	HIMAGE		hTestImage;
@@ -119,6 +120,12 @@ void CMenuVidOptions::SaveAndPopMenu( void )
 		hudscale.WriteCvar();
 	}
 	// gamma and brightness is already written
+
+	hdmodels.WriteCvar();
+	// the HD content folder mounts at once from the menu; during a game the engine mounts it at the next new
+	// game or load, when nothing loaded before is left
+	if( !EngFuncs::ClientInGame( ))
+		EngFuncs::ClientCmd( false, "fs_rescan\n" );
 
 	CMenuFramework::SaveAndPopMenu();
 }
@@ -253,6 +260,11 @@ void CMenuVidOptions::_Init( void )
 	height += switchStep;
 
 	hudscale.szName = L( "Auto scale HUD" );
+	// the 25th update's high definition models (valve_hd)
+	hdmodels.SetNameAndStatus( L( "GameUI_HDModels" ), L( "Takes effect when a game is started or loaded" ));
+	hdmodels.SetCoord( 72, height );
+	height += 50;
+
 	hudscale.SetCoord( 72, height );
 	height += 50;
 
@@ -322,6 +334,8 @@ void CMenuVidOptions::_Init( void )
 		brightness.SetCoord( UI_ITEM_COLUMN, height );
 		height += UI_ROW_NAMED + UI_GROUP_STEP;
 		gammaIntensity.size.w = brightness.size.w = UI_ITEM_WIDTH;
+		hdmodels.SetCoord( UI_ITEM_COLUMN, height );
+		height += 50 + UI_GROUP_STEP;
 		done.SetCoord( UI_ITEM_COLUMN, height );
 		bSaveOnBack = true;
 
@@ -333,11 +347,13 @@ void CMenuVidOptions::_Init( void )
 		}
 		AddItem( gammaIntensity );
 		AddItem( brightness );
+		AddItem( hdmodels );
 		AddItem( done );
 		AddItem( testImage );
 
 		gammaIntensity.LinkCvar( "gamma" );
 		brightness.LinkCvar( "brightness" );
+		hdmodels.LinkCvar( "fs_mount_hd" );
 		return;
 	}
 
@@ -361,6 +377,7 @@ void CMenuVidOptions::_Init( void )
 		AddItem( overbright );
 		AddItem( filtering );
 	}
+	AddItem( hdmodels );
 	AddItem( hudscale );
 	AddItem( testImage );
 
@@ -376,6 +393,7 @@ void CMenuVidOptions::_Init( void )
 	vbo.LinkCvar( "gl_vbo" );
 	overbright.LinkCvar( "gl_overbright" );
 	// skip filtering.LinkCvar, different names in ref_gl and ref_soft
+	hdmodels.LinkCvar( "fs_mount_hd" );
 	hudscale.LinkCvar( "hud_scale" );
 }
 

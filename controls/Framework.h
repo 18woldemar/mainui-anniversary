@@ -22,7 +22,7 @@ GNU General Public License for more details.
 #define MAX_FRAMEWORK_PICBUTTONS 16
 
 // the pad buttons a page or a dialog answers to, at the bottom right of the gamepad UI; NULL hides one
-void UI_DrawLegend( const char *a, const char *x_label, const char *b );
+void UI_DrawLegend( const char *a, const char *x_label, const char *b, const char *y_label = NULL );
 
 /*
  * WON-style menu framework
@@ -64,7 +64,7 @@ public:
 
 	// the pad buttons the page answers to in the gamepad UI (menu strings; NULL hides one). Pages change
 	// them with their state
-	const char *legendA, *legendB, *legendX;
+	const char *legendA, *legendB, *legendX, *legendY;
 
 	class CMenuBannerBitmap : public CMenuBaseItem
 	{
