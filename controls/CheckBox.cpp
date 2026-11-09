@@ -155,7 +155,7 @@ void CMenuCheckBox::Draw( void )
 	}
 
 	if((( iFlags & QMF_MOUSEONLY ) && !( iFlags & QMF_HASMOUSEFOCUS ))
-	   || ( this != m_pParent->ItemAtCursor() ) )
+	   || !IsCurrentSelected( ))
 	{
 		if( !bChecked )
 			UI_DrawPic( m_scPos, m_scSize, colorBase, szEmptyPic );

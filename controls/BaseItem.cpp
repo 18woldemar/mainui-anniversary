@@ -142,9 +142,11 @@ void CMenuBaseItem::_Event( int ev )
 
 bool CMenuBaseItem::IsCurrentSelected() const
 {
-	if( m_pParent )
-		return this == m_pParent->ItemAtCursor();
-	return false;
+	if( !m_pParent || this != m_pParent->ItemAtCursor() )
+		return false;
+
+	// a holder inside a window (a page of options) keeps its cursor while the window's focus is elsewhere
+	return m_pParent->IsWindow() || m_pParent->IsCurrentSelected();
 }
 
 void CMenuBaseItem::CalcPosition()

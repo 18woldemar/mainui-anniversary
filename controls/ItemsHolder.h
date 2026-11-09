@@ -45,6 +45,7 @@ public:
 	// returns a position where actual items holder is located
 	virtual Point GetPositionOffset() const;
 	virtual bool IsWindow() { return false; }
+	void Enter( int dir ) override;
 
 	void CursorMoved( void );
 	void SetCursor( int newCursor, bool notify = true );

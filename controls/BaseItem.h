@@ -91,6 +91,9 @@ public:
 	// Determine if this item can be activated using a hotkey
 	virtual bool HotKey( int key ) { return false; }
 
+	// The keys move the focus onto this item, going down ( dir 1 ) or up ( -1 )
+	virtual void Enter( int dir ) { }
+
 	// Get item default cursor (flags may override this)
 	virtual VGUI_DefaultCursor CursorAction() { return dc_arrow; }
 

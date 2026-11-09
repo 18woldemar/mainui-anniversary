@@ -188,6 +188,7 @@ bool CMenuItemsHolder::Key( const int key, const bool down )
 			if( cursorPrev != m_iCursor )
 			{
 				CursorMoved();
+				m_pItems[m_iCursor]->Enter( direction );
 				m_pItems[m_iCursor]->PlayLocalSound( uiStatic.sounds[SND_MOVE] );
 				handled = true;
 
@@ -420,6 +421,31 @@ wrap:
 	if( wrapped )
 		return m_bWrapCursor;
 	return true;
+}
+
+/*
+=================
+CMenuItemsHolder::Enter
+
+Coming in from the item above, the focus lands on the first item here; from below, on the last one.
+=================
+*/
+void CMenuItemsHolder::Enter( int dir )
+{
+	const int prev = m_iCursor;
+
+	m_iCursorPrev = m_iCursor;
+	m_iCursor = dir > 0 ? 0 : m_pItems.Count() - 1;
+	if( !AdjustCursor( dir ))
+	{
+		m_iCursor = prev;
+		return;
+	}
+
+	if( prev >= 0 && prev < m_pItems.Count( ))
+		ClearBits( m_pItems[prev]->iFlags, QMF_HASKEYBOARDFOCUS );
+	SetBits( m_pItems[m_iCursor]->iFlags, QMF_HASKEYBOARDFOCUS );
+	CursorMoved();
 }
 
 CMenuBaseItem *CMenuItemsHolder::ItemAtCursor()

@@ -43,6 +43,7 @@ public:
 	bool IsItemFits( CMenuEditable &item );
 	void PrepareItem( CMenuEditable &item );
 	void Save();
+	int UsedHeight() const { return m_iCurrentHeight; }
 
 private:
 	int m_iCurrentHeight;
@@ -316,20 +317,39 @@ static void ScriptCvarWriteSync( CMenuBaseItem *pSelf, void *pExtra )
 
 void CMenuScriptConfig::_Init( void )
 {
+	// The gamepad UI: the column every page uses. The page number goes round first, the options under it,
+	// then Done; B keeps the changes, as on the other settings pages. The pages are cut to end above the
+	// bottom of the TV safe area.
+	const bool pad = uiStatic.gamepadUI;
+	const int padPageTop = UI_CONTENT_TOP + UI_ROW_STEP + UI_GROUP_STEP;
+	const int padPageHeight = 730 - UI_BUTTONS_HEIGHT - UI_GROUP_STEP - padPageTop;
+
 	AddItem( banner );
 	AddButton( L( "Done" ), nullptr, PC_DONE, VoidCb( &CMenuScriptConfig::SaveAndPopMenu ) );
-	AddButton( L( "GameUI_Cancel" ), nullptr, PC_CANCEL, VoidCb( &CMenuScriptConfig::Hide ) );
+	if( pad )
+	{
+		bSaveOnBack = true;
+		SetButtonTop( UI_CONTENT_TOP );
+	}
+	else
+		AddButton( L( "GameUI_Cancel" ), nullptr, PC_CANCEL, VoidCb( &CMenuScriptConfig::Hide ) );
 
 	if( !m_pVars )
 		return;
 
 	// RemoveItem( unavailable );
-	pageSelector.SetRect( 780, 180, 160, 32 );
+	if( pad )
+		pageSelector.SetRect( UI_ITEM_COLUMN, UI_CONTENT_TOP, UI_ITEM_WIDTH, 32 );
+	else
+		pageSelector.SetRect( 780, 180, 160, 32 );
 	AddItem( pageSelector );
 
 
 	CMenuScriptConfigPage *page = new CMenuScriptConfigPage;
-	page->SetRect( 340, 255, 660, 500 );
+	if( pad )
+		page->SetRect( UI_ITEM_COLUMN, padPageTop, 660, padPageHeight );
+	else
+		page->SetRect( 340, 255, 660, 500 );
 	page->iFlags &= ~(QMF_GRAYED|QMF_INACTIVE|QMF_MOUSEONLY);
 	page->Show();
 	m_iCurrentPage = 0;
@@ -432,7 +452,10 @@ void CMenuScriptConfig::_Init( void )
 			page = new CMenuScriptConfigPage;
 			page->Hide();
 			page->iFlags &= ~(QMF_GRAYED|QMF_INACTIVE);
-			page->SetRect( 340, 255, 660, 440 );
+			if( pad )
+				page->SetRect( UI_ITEM_COLUMN, padPageTop, 660, padPageHeight );
+			else
+				page->SetRect( 340, 255, 660, 440 );
 
 			AddItem( page );
 			m_iPagesCount++;
@@ -447,6 +470,28 @@ void CMenuScriptConfig::_Init( void )
 	pageSelector.Setup( 1, m_iPagesCount, 1 );
 	pageSelector.SetCurrentValue( 1 );
 	pageSelector.onChanged = VoidCb( &CMenuScriptConfig::FlipMenu );
+
+	if( pad )
+	{
+		CMenuScriptConfigPage *first = (CMenuScriptConfigPage *)m_pItems[m_iPagesIndex];
+
+		// one page needs no number: it moves up into the selector's row
+		if( m_iPagesCount == 1 )
+		{
+			pageSelector.Hide();
+			first->SetCoord( UI_ITEM_COLUMN, UI_CONTENT_TOP );
+		}
+
+		// Done stays under the fullest page, the first, whichever page shows; the pad walks the items in the
+		// order they were added, so it moves to the end
+		SetButtonTop( first->pos.y + first->UsedHeight() + UI_GROUP_STEP );
+		for( int i = 0; i < m_iBtnsNum; i++ )
+		{
+			RemoveItem( *m_apBtns[i] );
+			AddItem( *m_apBtns[i] );
+		}
+		m_iPagesIndex -= m_iBtnsNum; // the buttons stood before the pages
+	}
 }
 
 void CMenuScriptConfig::SetScriptConfig(const char *path, bool bIsSettings, bool earlyInit)

@@ -183,7 +183,7 @@ void CMenuSpinControl::Draw( void )
 		return; // grayed
 	}
 
-	if(this != m_pParent->ItemAtCursor())
+	if( !IsCurrentSelected( ))
 	{
 		UI::Scissor::PushScissor( scCenterPos, scCenterBox );
 		UI_DrawString( font, scCenterPos, scCenterBox, m_szDisplay, colorBase, m_scChSize, eTextAlignment, textflags );

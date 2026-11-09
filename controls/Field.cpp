@@ -502,7 +502,7 @@ void CMenuField::Draw( void )
 		return; // grayed
 	}
 
-	if(this != m_pParent->ItemAtCursor())
+	if( !IsCurrentSelected( ))
 	{
 		UI_DrawString( font, newPos, m_scSize, text, colorBase, m_scChSize, eTextAlignment, textflags );
 		return; // no focus
