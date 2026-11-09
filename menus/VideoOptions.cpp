@@ -190,7 +190,8 @@ void CMenuVidOptions::_Init( void )
 
 	int height = 280;
 
-	gl3Active = !stricmp( EngFuncs::GetCvarString( "r_refdll_loaded" ), "gl3" );
+	// ref_vk is the same renderer on another API: the same render styles
+	gl3Active = !stricmp( EngFuncs::GetCvarString( "r_refdll_loaded" ), "gl3" ) || !stricmp( EngFuncs::GetCvarString( "r_refdll_loaded" ), "vk" );
 
 	// the styles, by the names the player knows them under: the two the original shipped, and ours
 	static const char *styleStr[] = { L( "Original" ), L( "Software" ), L( "Enhanced" ) };
