@@ -78,6 +78,9 @@ public:
 	int GetRows() const override { return maps->GetRows(); }
 	const char *GetText( int line ) override
 	{
+		if( line < 0 || line >= GetRows( ))
+			return ""; // a game with no maps
+
 		const map_t &map = maps->Element( line );
 		return map.desc[0] && strcmp( map.desc, "No Title" ) ? map.desc : map.name;
 	}
@@ -94,6 +97,7 @@ public:
 	void Show() override;
 	void Reload( void ) override;
 	void SaveCvars( void );
+	void SyncMapSpin( void );
 
 	CMenuField	maxClients;
 	CMenuField	hostName;
@@ -405,7 +409,7 @@ void CMenuCreateGame::Show()
 	if( uiStatic.gamepadUI )
 	{
 		// the spins show what the hidden table and field hold
-		mapSpin.SetCurrentValue( (float)Q_max( 0, mapsList.GetCurrentIndex( )));
+		SyncMapSpin();
 		playersSpin.SetCurrentValue( (float)bound( 2, atoi( maxClients.GetBuffer( )), MAX_CLIENTS ));
 	}
 }
@@ -428,6 +432,16 @@ void CMenuCreateGame::SaveCvars()
 void CMenuCreateGame::Reload( void )
 {
 	mapsListModel.Update();
+
+	if( uiStatic.gamepadUI )
+		SyncMapSpin();
+}
+
+// the list can be rebuilt after the page was made, and be shorter
+void CMenuCreateGame::SyncMapSpin( void )
+{
+	mapSpin.Setup( &mapNames );
+	mapSpin.SetCurrentValue( (float)Q_max( 0, mapsList.GetCurrentIndex( )));
 }
 
 ADD_MENU( menu_creategame, CMenuCreateGame, UI_CreateGame_Menu );
