@@ -1,3 +1,9 @@
+> [!NOTE]
+> **This is the menu of [xash3d-anniversary](https://github.com/18woldemar/xash3d-anniversary)**, a fork of
+> FWGS's [mainui_cpp](https://github.com/FWGS/mainui_cpp). It adds a gamepad menu in the WON style (switched on
+> with the engine's `ui_gamepadui`), the render style and HD models switches, and the caption options. Report its
+> bugs in [xash3d-anniversary](https://github.com/18woldemar/xash3d-anniversary/issues). Upstream's README follows.
+
 # mainui_cpp
 
 Main Menu UI for Xash3D FWGS engine, built entirely in C++.
