@@ -188,7 +188,8 @@ bool CMenuItemsHolder::Key( const int key, const bool down )
 			if( cursorPrev != m_iCursor )
 			{
 				CursorMoved();
-				m_pItems[m_iCursor]->Enter( direction );
+				if( uiStatic.gamepadUI ) // the desktop keeps a nested holder's own cursor, as upstream
+					m_pItems[m_iCursor]->Enter( direction );
 				m_pItems[m_iCursor]->PlayLocalSound( uiStatic.sounds[SND_MOVE] );
 				handled = true;
 

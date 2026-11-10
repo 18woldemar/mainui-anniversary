@@ -20,6 +20,7 @@ GNU General Public License for more details.
 #include "YesNoMessageBox.h"
 #include "Framework.h"
 #include "Utils.h"
+#include "FontManager.h"
 
 static void ToggleInactiveInternalCb( CMenuBaseItem *pSelf, void *pExtra );
 
@@ -113,11 +114,22 @@ CMenuYesNoMessageBox::VidInit
 */
 void CMenuYesNoMessageBox::_VidInit()
 {
-	SetRect( DLG_X + 192, 384 - DlgHeight() / 2, 640, DlgHeight() );
+	int extra = 0;
+
+	// the gamepad UI's box is sized for three lines: a longer message (an engine error, a translation) makes
+	// it taller, as far as the screen allows
+	if( uiStatic.gamepadUI && dlgMessage1.szName )
+	{
+		const int lines = g_FontMgr->GetTextHeightExt( dlgMessage1.font, dlgMessage1.szName, dlgMessage1.charSize, 640 * uiStatic.scaleX );
+
+		extra = bound( 0, (int)( lines / uiStatic.scaleY ) - DlgTextHeight(), 768 - 64 - DlgHeight());
+	}
+
+	SetRect( DLG_X + 192, 384 - ( DlgHeight() + extra ) / 2, 640, DlgHeight() + extra );
 	pos.x += uiStatic.xOffset;
 	pos.y += uiStatic.yOffset;
-	dlgMessage1.size.h = DlgTextHeight();
-	yes.pos.y = no.pos.y = DlgButtonY();
+	dlgMessage1.size.h = DlgTextHeight() + extra;
+	yes.pos.y = no.pos.y = DlgButtonY() + extra;
 	CalcPosition();
 	CalcSizes();
 }

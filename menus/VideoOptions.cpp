@@ -121,10 +121,11 @@ void CMenuVidOptions::SaveAndPopMenu( void )
 	}
 	// gamma and brightness is already written
 
+	const bool hdChanged = ( EngFuncs::GetCvarFloat( "fs_mount_hd" ) != 0.0f ) != hdmodels.bChecked;
 	hdmodels.WriteCvar();
 	// the HD content folder mounts at once from the menu; during a game the engine mounts it at the next new
 	// game or load, when nothing loaded before is left
-	if( !EngFuncs::ClientInGame( ))
+	if( hdChanged && !EngFuncs::ClientInGame( ))
 		EngFuncs::ClientCmd( false, "fs_rescan\n" );
 
 	CMenuFramework::SaveAndPopMenu();

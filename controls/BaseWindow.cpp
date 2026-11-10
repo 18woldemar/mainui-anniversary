@@ -39,14 +39,18 @@ void CMenuBaseWindow::Show()
 	if( uiStatic.gamepadUI )
 	{
 		// no mouse: the first item the pad can use takes the focus
+		// and the item focused on the last visit no longer is
 		m_iCursor = m_iCursorPrev = -1;
 		FOR_EACH_VEC( m_pItems, i )
+			ClearBits( m_pItems[i]->iFlags, QMF_HASKEYBOARDFOCUS );
+		FOR_EACH_VEC( m_pItems, i )
 		{
-			const CMenuBaseItem *item = m_pItems[i];
+			CMenuBaseItem *item = m_pItems[i];
 
 			if( item->IsVisible() && !FBitSet( item->iFlags, QMF_GRAYED|QMF_INACTIVE|QMF_MOUSEONLY ))
 			{
 				SetCursor( i );
+				SetBits( item->iFlags, QMF_HASKEYBOARDFOCUS );
 				break;
 			}
 		}

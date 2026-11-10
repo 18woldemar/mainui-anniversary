@@ -259,7 +259,8 @@ void CMenuSpinControl::UpdateEditable()
 		SetCurrentValue( CvarString() );
 		break;
 	case CVAR_VALUE:
-		SetCurrentValue( CvarValue() );
+		// a value set from the console can be outside the spin: show and keep the nearest it has
+		SetCurrentValue( bound( m_flMinValue, CvarValue(), m_flMaxValue ));
 		break;
 	}
 }

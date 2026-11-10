@@ -83,8 +83,9 @@ bool CMenuCheckBox::KeyDown( int key )
 	const char	*sound = 0;
 
 	// gamepad UI: left turns it off, right on - a held direction repeats in the menu, and a toggle would
-	// flicker
-	if( uiStatic.gamepadUI && ( UI::Key::IsLeftArrow( key ) || UI::Key::IsRightArrow( key )))
+	// flicker. In a dialog left and right move between its items instead.
+	if( uiStatic.gamepadUI && ( UI::Key::IsLeftArrow( key ) || UI::Key::IsRightArrow( key ))
+		&& !( Parent() && FBitSet( Parent()->iFlags, QMF_DIALOG )))
 	{
 		const bool want = UI::Key::IsRightArrow( key );
 
