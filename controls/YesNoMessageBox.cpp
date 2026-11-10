@@ -120,9 +120,10 @@ void CMenuYesNoMessageBox::_VidInit()
 	// it taller, as far as the screen allows
 	if( uiStatic.gamepadUI && dlgMessage1.szName )
 	{
-		const int lines = g_FontMgr->GetTextHeightExt( dlgMessage1.font, dlgMessage1.szName, dlgMessage1.charSize, 640 * uiStatic.scaleX );
+		// in screen pixels, as the text is drawn
+		const int height = g_FontMgr->GetTextHeightExt( dlgMessage1.font, dlgMessage1.szName, dlgMessage1.charSize * uiStatic.scaleY, 640 * uiStatic.scaleX );
 
-		extra = bound( 0, (int)( lines / uiStatic.scaleY ) - DlgTextHeight(), 768 - 64 - DlgHeight());
+		extra = bound( 0, (int)( height / uiStatic.scaleY ) - DlgTextHeight(), 768 - 64 - DlgHeight());
 	}
 
 	SetRect( DLG_X + 192, 384 - ( DlgHeight() + extra ) / 2, 640, DlgHeight() + extra );
